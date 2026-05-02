@@ -10,8 +10,7 @@
  * - Automatic artifact generation with WHY/HOW explanations
  */
 
-import type { Plugin, PluginInput, Hooks, ToolContext } from '@opencode-ai/plugin';
-import { tool } from '@opencode-ai/plugin';
+import type { Plugin, PluginInput, Hooks } from '@opencode-ai/plugin';
 import fs from 'fs';
 import path from 'path';
 import {
@@ -684,34 +683,111 @@ function generateDocumentFix(): string {
 
 export default async function TridentBrainPlugin(input: PluginInput): Promise<Hooks> {
   return {
-    tool: {
-      'trident-audit': tool({
-        description: 'Run a code audit on a target directory. Scans for theatrical code, security issues, quality patterns.',
-        args: {
-          target: tool.schema.string().optional().describe('Target directory to audit (defaults to current directory)'),
-          depth: tool.schema.number().optional().describe('Audit depth 1-7 (default: 7)'),
-        },
-        execute: async (args: any, ctx: ToolContext) => {
-          const target = args.target || process.cwd();
-          const result = await runAudit(target, {});
-          return result;
-        },
-      }),
-      'trident-status': tool({
-        description: 'Show current Trident audit state and findings summary',
-        args: {},
-        execute: async () => getStatus(),
-      }),
-      'trident-report': tool({
-        description: 'Show the full audit report with detailed findings',
-        args: {},
-        execute: async () => generateFullReport(),
-      }),
-      'trident-help': tool({
-        description: 'Show Trident available commands and pattern categories',
-        args: {},
-        execute: async () => getHelp(),
-      }),
+    'tool.execute.before': async (input: any, output: any) => {
+      const toolName = input.tool as string;
+
+      const BLOCKED_TOOLS = [
+        'edit',
+        'sed',
+        'echo',
+        'cat',
+        'write',
+        'write_file',
+        'apply_diff',
+        'patch'
+      ];
+
+      const isBlocked = BLOCKED_TOOLS.some(t => toolName === t || toolName.includes(t));
+
+      if (toolName === 'bash') {
+        const cmd = input.args?.command || '';
+        const isTestScript =
+          cmd.includes('/tmp/') &&
+          cmd.endsWith('.sh') &&
+          (cmd.includes('npm test') || cmd.includes('pytest') || cmd.includes('jest'));
+
+        if (isTestScript) return;
+        output.blocked = true;
+        output.blockReason = '[Trident] BLOCKED - Trident is documentation-only. Never edits code.';
+        return;
+      }
+
+      if (isBlocked) {
+        output.blocked = true;
+        output.blockReason = '[Trident] BLOCKED - Trident is documentation-only. Never edits code.';
+      }
+    },
+
+    'tool.execute.after': async (input: any, output: any) => {
+      // Trident doesn't write - documentation only
+    },
+
+    'chat.message': async (input: any, output: any) => {
+      if (input.agent !== 'trident') return;
+
+      const message = input.message as string;
+      if (!message) {
+        output.parts = [{ type: 'text', text: getHelp() }];
+        return;
+      }
+
+      try {
+        const parsed = parseNaturalLanguage(message);
+
+        if (!parsed) {
+          output.parts = [{ type: 'text', text: getHelp() }];
+          return;
+        }
+
+        let result: string;
+
+        switch (parsed.action) {
+          case 'audit':
+            result = await runAudit(parsed.target || process.cwd(), parsed.options);
+            break;
+          case 'verify':
+            result = await runVerify(message);
+            break;
+          case 'analyze-hooks':
+            result = await runHookAnalysis(message);
+            break;
+          case 'resource-cost':
+            result = await runResourceAnalysis();
+            break;
+          case 'cross-ref':
+            result = await runCrossRefAnalysis();
+            break;
+          case 'firewall-test':
+            result = runFirewallTest();
+            break;
+          case 'status':
+            result = getStatus();
+            break;
+          case 'report':
+          case 'full report':
+            result = generateFullReport();
+            break;
+          case 'artifact':
+          case 'show artifact':
+            const artifact = state.artifacts.get('LATEST_ARTIFACT');
+            result = artifact || '## NO ARTIFACT\n\nRun "audit this" first to generate an artifact.';
+            break;
+          case 'save_report':
+            result = `## SAVE REPORT\n\nReport saved as: ${state.lastReportPath || 'TRIDENT_CODE_REVIEW.md'}\n\nUse "show full report" to view.`;
+            break;
+          case 'document_fix':
+            result = generateDocumentFix();
+            break;
+          default:
+            result = getHelp();
+        }
+
+        output.parts = [{ type: 'text', text: result }];
+
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        output.parts = [{ type: 'text', text: `## TRIDENT ERROR\n\n${errorMsg}\n\nTry again or say "help" for available commands.` }];
+      }
     },
 
     config: async (cfg: any) => {
@@ -719,28 +795,37 @@ export default async function TridentBrainPlugin(input: PluginInput): Promise<Ho
 
       cfg.agent['trident'] = {
         name: 'trident',
-        description: 'TRIDENT v3.2 — Documentation-only code review. Never edits.',
-        instructions: `TRIDENT v3.2 — Code Review Agent
-TOOLS: trident-audit, trident-status, trident-report, trident-help
-TRIDENT CORE PRINCIPLE: "Trident Documents. Humans Fix."
+        description: 'TRIDENT v3.1 - Documentation-only code review. Never edits.',
+        instructions: `TRIDENT CORE PRINCIPLE: "Trident Documents. Humans Fix."
 
-TRIDENT NEVER edits code or applies fixes.
+TRIDENT NEVER:
+- Edits source code
+- Applies fixes automatically
+- Modifies any files
+- Uses edit, write, apply_diff, or patch tools
 
-TRIDENT ALWAYS documents findings in TRIDENT_CODE_REVIEW_*.md files.
+TRIDENT ALWAYS:
+- Documents findings in TRIDENT_CODE_REVIEW_*.md files
+- Explains WHY each issue is problematic
+- Explains HOW to fix (for human review)
+- Provides proof-based verification
 
-TOOLS:
-- trident-audit [target] — Run code audit
-- trident-status — Show current state
-- trident-report — Full detailed report
-- trident-help — Available commands
+BANNED PATTERNS (CRITICAL):
+- Simulated execution (fake success responses)
+- Theatrical code (TODO placeholders)
+- Stub functions (null/undefined returns)
 
-When user asks to audit/scan/review: call trident-audit with target path.
-When user asks for status: call trident-status.
-When user asks for full report: call trident-report.`,
+COMMANDS:
+- "audit this" - Scan and document findings
+- "show full report" - Display detailed findings
+- "document_fix" - Generate fix documentation (NOT apply)
+- "verify that [claim]" - Proof verification
+- "analyze hook isolation" - Cross-plugin check
+- "show status" - Current state`,
         mode: 'primary',
         permission: { task: 'allow' },
-        color: '#8B5CF6',
+        color: '#8B5CF6'
       };
-    },
+    }
   };
 }

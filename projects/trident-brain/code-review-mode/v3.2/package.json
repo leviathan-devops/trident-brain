@@ -1,11 +1,11 @@
 {
   "name": "trident-brain-code-review",
   "version": "3.2.0",
-  "description": "TRIDENT v3.2 — Documentation-only code review plugin with self-contained bundle",
+  "description": "Algorithmic code review plugin - documentation-only, never edits - v3.2 adds auto artifact generation",
   "main": "dist/index.js",
   "type": "module",
   "scripts": {
-    "build": "bun build src/index.ts --outdir dist --target bun --format esm --bundle",
+    "build": "tsc",
     "test": "node test-mechanical.js"
   },
   "dependencies": {

@@ -1,6 +1,6 @@
 # TRIDENT BRAIN v3.2 - SHIP READY
 ## Status: ✅ SHIP READY
-## Date: 2026-05-02
+## Date: 2026-04-16
 ## Version: 3.2.0
 
 ---
@@ -8,31 +8,38 @@
 ## SHIP CHECKLIST
 
 ### Build Verification
-- [x] Self-contained bundle builds without errors
-- [x] Bundle includes @opencode-ai/plugin (530KB)
+- [x] TypeScript compiles without errors
 - [x] All source files present (index.ts, algorithmic-core.ts, artifact-writer.ts)
-- [x] All tools exported (trident-audit, trident-status, trident-report, trident-help)
-- [x] Type definitions generated
+- [x] All dist files generated (index.js, algorithmic-core.js, artifact-writer.js)
+- [x] Type definitions generated (*.d.ts)
+- [x] Source maps generated (*.map)
 
-### Functionality Tests (Container TUI Verified)
-- [x] trident-status tool returns audit state
-- [x] trident-audit scans directory and generates artifact
-- [x] Artifact with WHY/HOW structure generated correctly
-- [x] File written to process.cwd() when target dir not writable
-- [x] Artifact shows filepath in output
+### Mechanical Tests
+- [x] Artifact structure test (LAYER 1/2/3)
+- [x] Findings categorization test
+- [x] Verification commands test
+- [x] Semantic context extraction test
+- [x] Empty findings handling test
+- [x] All severity levels test
 
-### Tools Verified Working
-- [x] trident-status — Shows "idle with no findings" initially
-- [x] trident-audit [target] — Scans, finds issues, generates artifact
-- [x] trident-report — Returns full findings (placeholder for post-audit)
-- [x] trident-help — Shows commands
+### Functionality Tests
+- [x] ArtifactWriter.generate() produces valid output
+- [x] WHY explanations included for all categories
+- [x] HOW fixes included for all categories
+- [x] Verification commands included
+- [x] 3-layer structure correct
+
+### Documentation
+- [x] BUILD_REPORT.md complete
+- [x] DEBUG_LOG.md complete
+- [x] RECOVERY.md complete
+- [x] INDEX.md complete
+- [x] Scripts created (build.sh, deploy.sh, test.sh)
 
 ### Deployment
-- [x] Bundle copied to ~/.config/opencode/plugins/trident-brain/
-- [x] Plugin registered in opencode.json
-- [x] Plugin recognized by OpenCode TUI
+- [x] Files copied to ~/.config/opencode/plugins/trident-brain/
+- [x] Plugin recognized by OpenCode
 - [x] No loading errors
-- [x] Tools available to model
 
 ---
 
@@ -40,11 +47,11 @@
 
 | Criterion | Target | Actual | Status |
 |-----------|--------|--------|--------|
-| Bundle builds | 0 errors | 0 errors | ✅ |
-| Bundle is self-contained | 500KB+ | 528KB | ✅ |
-| Tools load in TUI | All 4 | All 4 | ✅ |
-| Artifact generates | Yes | Yes | ✅ |
-| WHY/HOW present | Yes | Yes | ✅ |
+| Build clean | 0 errors | 0 errors | ✅ |
+| Tests pass | 4/4 | 4/4 | ✅ |
+| Artifacts generate | Yes | Yes | ✅ |
+| WHY/HOW present | 30+ categories | 30+ categories | ✅ |
+| Verification commands | Yes | Yes | ✅ |
 | 3-layer structure | Yes | Yes | ✅ |
 | v3.1 preserved | Yes | Yes | ✅ |
 
@@ -53,19 +60,20 @@
 ## V3.2 FEATURES SHIPPED
 
 ### New Features
-1. **Self-contained bundle** — @opencode-ai/plugin bundled in (no external deps needed)
-2. **Tool-based interface** — trident-audit, trident-status, trident-report, trident-help
-3. **Automatic artifact generation** — Artifacts generated on every audit
-4. **3-layer Deep Planning structure** — Layer 1 (what), Layer 2 (why/how), Layer 3 (workflow)
-5. **WHY explanations** — Detailed mechanistic explanations
-6. **HOW fix templates** — Step-by-step fix instructions
-7. **Mechanical verification** — Commands to verify fixes work
+1. **Automatic artifact generation** - Artifacts generated on every audit
+2. **3-layer Deep Planning structure** - Layer 1 (what), Layer 2 (why/how), Layer 3 (workflow)
+3. **WHY explanations** - Detailed mechanistic explanations for 30+ issue categories
+4. **HOW fix templates** - Step-by-step fix instructions for each category
+5. **Mechanical verification** - Commands to verify fixes work
+6. **"show artifact" command** - Retrieve latest artifact on demand
 
 ### Preserved from v3.1
 1. All 50+ pattern detectors
-2. Agent instructions ("Trident Documents. Humans Fix.")
-3. Real-time firewall hooks (disabled by default)
-4. Artifact generation with WHY/HOW structure
+2. Tool hooks (edit/write/bash blocking)
+3. Agent instructions ("Trident Documents. Humans Fix.")
+4. All existing commands
+5. Real-time firewall
+6. Proof verifier
 
 ---
 
@@ -73,85 +81,62 @@
 
 ### Quick Deploy
 ```bash
-cd "/home/leviathan/OPENCODE_WORKSPACE/Shared Workspace Context/Trident Brain/Code Review Mode/Reload Anchor v3.2"
-./scripts/deploy.sh
+cp -r "/home/leviathan/OPENCODE_WORKSPACE/Shared Workspace Context/Trident Brain/Code Review Mode/Reload Anchor v3.2/dist/"* \
+  ~/.config/opencode/plugins/trident-brain/
 ```
 
-### Manual Deploy
+### From Source
 ```bash
 cd "/home/leviathan/OPENCODE_WORKSPACE/Shared Workspace Context/Trident Brain/Code Review Mode/Reload Anchor v3.2"
-
-# Build self-contained bundle
-bun build src/index.ts --outdir dist --target bun --format esm --bundle
-
-# Copy to plugin directory
+npm install
+npm run build
 cp dist/* ~/.config/opencode/plugins/trident-brain/
-
-# Verify bundle
-grep -c "trident-audit" ~/.config/opencode/plugins/trident-brain/dist/index.js
-# Should output: 1
-```
-
-### Check opencode.json
-Ensure trident-brain is registered:
-```json
-"plugin": [
-  "file:///home/leviathan/OPENCODE_WORKSPACE/plugins/trident-brain/dist/index.js",
-  ...
-]
 ```
 
 ---
 
-## MECHANICAL TEST (copy-paste)
+## POST-DEPLOYMENT VERIFICATION
+
+Run this command to verify:
 
 ```bash
-# Start container
-CID=$(docker run -d --rm --entrypoint /bin/bash \
-  -v ~/.config/opencode:/root/.config/opencode \
-  opencode-test:1.4.3 -c "sleep 3600")
+opencode run "audit /home/leviathan/OPENCODE_WORKSPACE/projects/calculator"
+```
 
-# Start TUI
-tmux new-session -d -s tui-test \
-  "docker exec -it $CID /usr/local/lib/node_modules/opencode-ai/node_modules/opencode-linux-x64/bin/opencode --agent trident 2>&1; sleep 60"
-sleep 6
+Expected:
+1. Summary response with severity counts
+2. Full artifact with 3-layer WHY/HOW structure
+3. "show artifact" command returns the artifact
 
-# Dismiss update
-tmux send-keys -t tui-test Escape
+---
 
-# Test status
-tmux send-keys -t tui-test "call trident-status"
-tmux send-keys -t tui-test Enter
-sleep 10
-tmux capture-pane -t tui-test -p -S -30 | strings | grep -E "idle|findings|Status"
+## GIT TAG
 
-# Test audit
-tmux send-keys -t tui-test "call trident-audit target=/home/leviathan/OPENCODE_WORKSPACE/hermes-test-project"
-tmux send-keys -t tui-test Enter
-sleep 25
-tmux capture-pane -t tui-test -p -S -40 | strings | grep -E "CRITICAL|MEDIUM|findings|Audit complete"
-
-# Cleanup
-tmux kill-session -t tui-test
-docker stop $CID
+```bash
+git tag -a v3.2.0 -m "Trident v3.2 - Automatic artifact generation with WHY/HOW"
+git push origin v3.2.0
 ```
 
 ---
 
-## TROUBLESHOOTING
+## ROLLBACK PROCEDURE
 
-### Tools not available
-- Verify bundle has tools: `grep -c "trident-audit" ~/.config/opencode/plugins/trident-brain/dist/index.js`
-- Check opencode.json: `grep trident ~/.config/opencode/opencode.json`
+To rollback to v3.1:
 
-### Artifact not generated
-- Check if file was written to process.cwd(): `ls -la /home/leviathan/OPENCODE_WORKSPACE/*.md | grep TRIDENT`
-- Verify artifactWriter is in bundle: `grep -c "artifactWriter" ~/.config/opencode/plugins/trident-brain/dist/index.js`
-
-### Model doesn't call tools
-- Ensure agent is 'trident': `opencode --agent trident`
-- Check model sees tool instructions in config
+```bash
+cp -r "/home/leviathan/OPENCODE_WORKSPACE/Shared Workspace Context/Trident Brain/Code Review Mode/Code Review v3.1/dist/"* \
+  ~/.config/opencode/plugins/trident-brain/
+```
 
 ---
 
-*Generated by Trident Brain v3.2 - "Trident Documents. Humans Fix."*
+## SHIP SIGN-OFF
+
+| Role | Status | Date |
+|------|--------|------|
+| Build | ✅ PASSED | 2026-04-16 |
+| Test | ✅ PASSED | 2026-04-16 |
+| Docs | ✅ COMPLETE | 2026-04-16 |
+| Deploy | ✅ COMPLETE | 2026-04-16 |
+
+**Ship Status: READY FOR PRODUCTION**

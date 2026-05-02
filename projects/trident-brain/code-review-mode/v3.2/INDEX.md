@@ -3,13 +3,13 @@
 
 **Version:** 3.2.0
 **Status:** SHIP READY ✅
-**Date:** 2026-05-02
+**Date:** 2026-04-16
 
 ---
 
 ## WHAT IS THIS?
 
-This is the **Reload Anchor** for Trident Brain v3.2. It contains everything needed to restore or deploy a working copy of Trident Brain with full artifact generation.
+This is the **Reload Anchor** for Trident Brain v3.2. It contains everything needed to restore a broken Trident installation or deploy a fresh copy.
 
 ---
 
@@ -18,91 +18,73 @@ This is the **Reload Anchor** for Trident Brain v3.2. It contains everything nee
 ```
 Reload Anchor v3.2/
 ├── src/                    # TypeScript source (3 files)
-│   ├── index.ts           # Plugin entry with tools
-│   ├── algorithmic-core.ts # Pattern detection engine
-│   └── artifact-writer.ts  # Artifact generation
-├── dist/                   # Self-contained bundle (~530KB)
-│   └── index.js           # Bundled with @opencode-ai/plugin
-├── scripts/
-│   ├── build.sh           # Builds self-contained bundle
-│   ├── deploy.sh          # Deploys to opencode plugins
-│   └── test.sh            # Basic verification
-├── docs/
+│   ├── index.ts
+│   ├── algorithmic-core.ts
+│   └── artifact-writer.ts
+├── dist/                   # Built plugin (6 files - READY TO DEPLOY)
+│   ├── index.js
+│   ├── algorithmic-core.js
+│   ├── artifact-writer.js
+│   └── *.d.ts + *.map
+├── docs/                   # Documentation (4 files)
 │   ├── BUILD_REPORT.md
 │   ├── DEBUG_LOG.md
 │   ├── RECOVERY.md
 │   └── SHIP_READY.md
-├── package.json
+├── scripts/                # Utility scripts
+│   ├── build.sh
+│   ├── deploy.sh
+│   └── test.sh
+├── package.json            # v3.2.0
 ├── tsconfig.json
-└── INDEX.md              # This file
+└── INDEX.md               # This file
 ```
 
 ---
 
 ## QUICK RESTORE
 
-**Single command deploy:**
+**Single command restore:**
+```bash
+cp -r "/home/leviathan/OPENCODE_WORKSPACE/Shared Workspace Context/Trident Brain/Code Review Mode/Reload Anchor v3.2/dist/"* \
+  ~/.config/opencode/plugins/trident-brain/
+```
+
+**Full restore from source:**
 ```bash
 cd "/home/leviathan/OPENCODE_WORKSPACE/Shared Workspace Context/Trident Brain/Code Review Mode/Reload Anchor v3.2"
 ./scripts/deploy.sh
 ```
 
-**Manual deploy:**
-```bash
-# Build
-cd "/home/leviathan/OPENCODE_WORKSPACE/Shared Workspace Context/Trident Brain/Code Review Mode/Reload Anchor v3.2"
-bun build src/index.ts --outdir dist --target bun --format esm --bundle
+---
 
-# Copy to plugins
-cp dist/* ~/.config/opencode/plugins/trident-brain/
-```
+## v3.2 SUMMARY
+
+| Item | Value |
+|------|-------|
+| Version | 3.2.0 |
+| Build Date | 2026-04-16 |
+| Source Files | 3 |
+| Source Lines | ~3,000 |
+| Distribution Files | 6 |
+| Distribution Size | ~118KB |
 
 ---
 
-## TOOLS AVAILABLE
+## WHAT'S NEW IN v3.2
 
-| Tool | Description |
-|------|-------------|
-| `trident-audit [target]` | Run code audit, generates TRIDENT_CODE_REVIEW_*.md artifact |
-| `trident-status` | Show current audit state and findings |
-| `trident-report` | Show full detailed findings report |
-| `trident-help` | Show available commands |
+### Automatic Artifact Generation
+When you run `audit this`, Trident now outputs:
+1. Summary response (preserved v3.1 behavior)
+2. Full artifact with 3-layer WHY/HOW structure
 
----
+### 3-Layer Deep Planning Structure
+- **Layer 1**: What is this / What went wrong
+- **Layer 2**: WHY is it a problem / HOW to fix each finding
+- **Layer 3**: Critical path + verification + prevention
 
-## TOOL COMMANDS (in TUI)
-
-When running with `--agent trident`:
-- Say "audit this /path/to/project" — runs trident-audit
-- Say "show status" — runs trident-status
-- Say "show full report" — runs trident-report
-
----
-
-## ARTIFACT OUTPUT
-
-When `trident-audit` completes, it generates:
-- `TRIDENT_CODE_REVIEW_{context}_{date}.md` in the target directory
-- Fallback: `process.cwd()` if target directory is not writable
-
-The artifact contains:
-- 3-layer WHY/HOW structure
-- Critical path with fix order
-- Mechanical verification commands
-- Raw findings table
-
----
-
-## v3.2 CHANGES FROM v3.1
-
-| Feature | v3.1 | v3.2 |
-|---------|-------|------|
-| Artifact generation | None | **Automatic** |
-| WHY explanations | Brief | **Detailed mechanistic** |
-| HOW to fix | One line | **Step-by-step** |
-| Verification commands | None | **Mechanical proof** |
-| Bundled distribution | Separate files | **Self-contained (530KB)** |
-| Tool-based interface | Hook-based only | **Tools + hooks** |
+### Commands Added
+- `show artifact` - Display latest generated artifact
 
 ---
 
@@ -110,33 +92,72 @@ The artifact contains:
 
 > **"Trident Documents. Humans Fix."**
 
-TRIDENT NEVER:
-- Edits source code
-- Applies fixes automatically
-- Modifies any files
-
-TRIDENT ALWAYS:
-- Documents findings with WHY (mechanistic explanation)
-- Explains HOW to fix (step-by-step)
-- Provides verification commands (mechanical proof)
+Trident NEVER edits code. It only documents findings with:
+- WHY (mechanistic explanation)
+- HOW (step-by-step fix)
+- Proof (verification command)
 
 ---
 
-## VERIFICATION
+## DOCUMENTATION
+
+| File | Purpose |
+|------|---------|
+| BUILD_REPORT.md | Build details, test results, changes |
+| DEBUG_LOG.md | Debug session notes, issues resolved |
+| RECOVERY.md | Emergency restoration procedures |
+| SHIP_READY.md | Ship checklist, deployment instructions |
+
+---
+
+## TESTING
+
+Run mechanical tests:
+```bash
+cd "/home/leviathan/OPENCODE_WORKSPACE/Shared Workspace Context/Trident Brain/Code Review Mode/Reload Anchor v3.2"
+npm test
+```
+
+Expected output: `=== ALL TESTS PASSED ===`
+
+---
+
+## CONTAINER TESTING
+
+For container TUI tests, use the Gemma model via Google API:
 
 ```bash
-# Check plugin is registered
-grep trident-brain ~/.config/opencode/opencode.json
+export GOOGLE_API_KEY=AIzaSyCdzysjAXh0vmzn4vOKuMSWx1dGIjP44Z4
 
-# Check bundle has tools
-grep -c "trident-audit" ~/.config/opencode/plugins/trident-brain/dist/index.js
-
-# Test in container
-docker run -d --name trident-test opencode-test:1.4.3
-docker exec trident-test opencode --agent trident
-# Say "trident-status"
+# Run audit in container
+docker run --rm -e GOOGLE_API_KEY=AIzaSyCdzysjAXh0vmzn4vOKuMSWx1dGIjP44Z4 \
+  leviathan/opencode:python3-enabled-1.4.3 \
+  opencode run "audit /path/to/code"
 ```
 
 ---
 
-*Generated by Trident Brain v3.2 - "Trident Documents. Humans Fix."*
+## GIT TAG
+
+```bash
+git tag -a v3.2.0 -m "Trident v3.2 - Automatic artifact generation"
+git push origin v3.2.0
+```
+
+---
+
+## IF SOMETHING BREAKS
+
+1. **Check RECOVERY.md** for restore procedures
+2. **Check DEBUG_LOG.md** for known issues
+3. **Verify OpenCode version**: `opencode --version`
+4. **Try rebuilding**: `./scripts/build.sh`
+
+---
+
+## KNOWLEDGE FILES
+
+For container testing best practices, see:
+```
+/home/leviathan/OPENCODE_WORKSPACE/Shared Workspace Context/Shark Agent/Master Context/CONTAINER_TESTING_KNOWLEDGE.md
+```
