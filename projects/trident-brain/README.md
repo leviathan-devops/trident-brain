@@ -1,18 +1,17 @@
 # TRIDENT BRAIN
 
 Multi-mode algorithmic intelligence system for OpenCode.
-Four reasoning modes: Context Synthesis, Deep Planning, Problem Solving, and Code Review.
 
 ---
 
 ## MODES
 
-| # | Mode | Type | Location | Status |
-|---|------|------|----------|--------|
-| 1 | Context Synthesis | Intelligence | `src/modes/context-synthesis/` | Stable |
-| 2 | Deep Planning | Intelligence | `src/modes/planning/` | Stable |
-| 3 | Problem Solving | Intelligence | `src/modes/problem-solving/` | Stable |
-| 4 | **Code Review** | Execution | `code-review-mode/` | v3.2 SHIP READY |
+| # | Mode | Location |
+|---|------|----------|
+| 1 | Context Synthesis | `src/modes/context-synthesis/` |
+| 2 | Deep Planning | `src/modes/planning/` |
+| 3 | Problem Solving | `src/modes/problem-solving/` |
+| 4 | Code Review | `src/modes/code-review/` |
 
 ---
 
@@ -23,7 +22,7 @@ Trident audits code, generates findings with WHY/HOW structure, and NEVER edits.
 
 ### Quick Deploy
 ```bash
-cd code-review-mode/v3.2
+cd src/modes/code-review/v3.2
 ./scripts/deploy.sh
 ```
 
@@ -40,25 +39,21 @@ cd code-review-mode/v3.2
 
 ### Structure
 ```
-code-review-mode/
-├── overview/               # Architecture & specification (7-layer audit design)
-│   ├── ARCHITECTURE/       # System architecture docs
-│   ├── META/              # Audit logs & design reasoning
-│   ├── SPEC/              # Full Trident specification
-│   ├── TEMPLATES/         # Layer templates (L0-L6)
-│   └── 00_INDEX.md        # Mode index
-└── v3.2/                  # Working plugin implementation
-    ├── src/               # TypeScript source (3 files)
-    ├── dist/              # Built output (self-contained bundle)
-    ├── scripts/           # build.sh, deploy.sh, test.sh
-    └── docs/              # Build reports, debug logs, ship docs
+src/modes/code-review/
+├── index.ts                # Mode integration
+├── detectors.ts            # Pattern detectors
+├── overview/               # Architecture & specification (7-layer audit)
+│   ├── ARCHITECTURE/
+│   ├── META/
+│   ├── SPEC/
+│   ├── TEMPLATES/          # L0-L6 layer templates
+│   └── 00_INDEX.md
+└── v3.2/                   # Self-contained plugin
+    ├── src/                # TypeScript source
+    ├── dist/               # Built output (self-contained bundle)
+    ├── scripts/            # build.sh, deploy.sh, test.sh
+    └── docs/               # Reports, logs, recovery docs
 ```
-
----
-
-## OTHER MODES
-
-See `src/modes/` for Context Synthesis, Deep Planning, and Problem Solving implementations.
 
 ---
 
