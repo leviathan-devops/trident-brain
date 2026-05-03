@@ -42,19 +42,20 @@ Reload Anchor v3.2/
 
 ---
 
-## QUICK RESTORE
+## VANILLA DEPLOY (from scratch)
 
-**Single command restore:**
 ```bash
-cp -r "/home/leviathan/OPENCODE_WORKSPACE/Shared Workspace Context/Trident Brain/Code Review Mode/Reload Anchor v3.2/dist/"* \
-  ~/.config/opencode/plugins/trident-brain/
-```
-
-**Full restore from source:**
-```bash
-cd "/home/leviathan/OPENCODE_WORKSPACE/Shared Workspace Context/Trident Brain/Code Review Mode/Reload Anchor v3.2"
+cd "Code Review Mode/v3.2"
 ./scripts/deploy.sh
 ```
+
+This single command handles:
+1. Builds dist/ (bun --bundle for self-contained, or tsc fallback)
+2. Copies dist/* to ~/.config/opencode/plugins/trident-brain/
+3. Registers in ~/.config/opencode/opencode.json
+4. Verifies deployment
+
+**Restart OpenCode** after deploy. Tools `trident-audit`, `trident-status`, `trident-report`, `trident-help` will be available.
 
 ---
 

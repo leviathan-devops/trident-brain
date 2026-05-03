@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "build": "tsc",
-    "test": "node test-mechanical.js"
+    "test": "bash scripts/test.sh"
   },
   "dependencies": {
     "@opencode-ai/plugin": "^1.3.9"
