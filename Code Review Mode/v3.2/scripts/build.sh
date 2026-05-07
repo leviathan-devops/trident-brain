@@ -10,8 +10,8 @@ echo "=== TRIDENT v3.2 BUILD ==="
 
 # Build with bun for self-contained bundle (preferred)
 if command -v bun &> /dev/null; then
-  echo "[bun] Building self-contained bundle..."
-  bun build src/index.ts --outdir dist --target bun --format esm --bundle
+  echo "[bun] Building with --external @opencode-ai/plugin (must be external - bun cannot inline it correctly)"
+  bun build src/index.ts --outdir dist --target bun --format esm --bundle --external @opencode-ai/plugin
 else
   # Fallback to tsc + npm
   echo "[tsc] Building TypeScript..."

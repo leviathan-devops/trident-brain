@@ -1,7 +1,7 @@
 {
   "name": "trident-brain-code-review",
-  "version": "3.2.0",
-  "description": "Algorithmic code review plugin - documentation-only, never edits - v3.2 adds auto artifact generation",
+  "version": "3.3.1",
+  "description": "Algorithmic code review plugin - documentation-only, never edits - v3.3.1 adds session-based hook scoping + identity awareness",
   "main": "dist/index.js",
   "type": "module",
   "scripts": {
