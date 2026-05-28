@@ -673,7 +673,9 @@ export default async function TridentBrainPlugin(input) {
             orchestratorName: TRIDENT_PLUGIN_IDENTITY.orchestrator
         }),
         'experimental.chat.system.transform': async (input, output) => {
-            if (!isTridentAgentFromInput(input)) return;
+            const agentName = input.agent ?? output.agent;
+            if (!agentName) return;
+            if (agentName !== 'trident' && !agentName.startsWith('trident-') && !agentName.startsWith('trident_')) return;
             if (!state.identityLoaded) return;
             try {
                 const bundle = await identityLoader.loadForRole('trident');
