@@ -272,6 +272,76 @@ export const PATTERNS = {
         { regex: /workspace.*\.hermes/i, severity: SEVERITY.MEDIUM },
     ],
 };
+// ============================================================================
+// LAYER 2: BUILD-REPORT PATTERNS - Architecture & Logic Detection
+// ============================================================================
+export const BUILD_PATTERNS = {
+    UNDEFINED_ACCESS: [
+        { regex: /\.(\w+)\s*\.\s*(\w+)\s*\(/, severity: SEVERITY.HIGH },
+        { regex: /\.then\s*\(\s*\w+\s*=>\s*\w+\s*\.\s*\w+\s*\)/, severity: SEVERITY.MEDIUM },
+    ],
+    NULL_POINTER_RISK: [
+        { regex: /\w+\s*\.\s*\w+\s*\.\s*\w+\s*(?!\?\.)/, severity: SEVERITY.HIGH },
+    ],
+    UNHANDLED_PROMISE: [
+        { regex: /async\s+\w+\s*\([^)]*\)\s*\{[^}]*return\s+\w+\s*\([^)]*\)\s*;/m, severity: SEVERITY.HIGH },
+        { regex: /\.then\s*\(\s*\w+\s*=>\s*\{[^}]*\}\s*\)/, severity: SEVERITY.MEDIUM },
+    ],
+    RACE_CONDITION: [
+        { regex: /\.\s*then\s*\([^)]*\)\s*\.\s*then\s*\([^)]*\)/, severity: SEVERITY.HIGH },
+        { regex: /setTimeout\s*\([^)]*\{[^}]*\w+\s*=\s*/, severity: SEVERITY.MEDIUM },
+    ],
+    INJECTION: [
+        { regex: /eval\s*\(\s*\w+/, severity: SEVERITY.CRITICAL },
+        { regex: /new\s+Function\s*\([^)]*\w+/, severity: SEVERITY.CRITICAL },
+        { regex: /innerHTML\s*=\s*\w+/, severity: SEVERITY.HIGH },
+        { regex: /document\s*\.\s*write\s*\(/, severity: SEVERITY.HIGH },
+    ],
+    SWALLOWED_ERROR: [
+        { regex: /catch\s*\([^)]*\)\s*\{\s*\}/, severity: SEVERITY.HIGH },
+        { regex: /catch\s*\([^)]*\)\s*\{[^}]*console\.log[^}]*\}/, severity: SEVERITY.MEDIUM },
+        { regex: /catch\s*\([^)]*\)\s*\{[^}]*return\s+undefined[^}]*\}/, severity: SEVERITY.MEDIUM },
+    ],
+    MEMORY_LEAK: [
+        { regex: /addEventListener\s*\([^)]*\)[\s\S]*?(?!removeEventListener)/, severity: SEVERITY.HIGH },
+        { regex: /setInterval\s*\([^)]*\)[\s\S]*?(?!clearInterval)/, severity: SEVERITY.HIGH },
+    ],
+    CIRCULAR_DEPENDENCY: [
+        { regex: /from\s+['"]\.\/(\w+)\.ts['"]\s*;[\s\S]*?from\s+['"]\.\/\1\.ts['"]/m, severity: SEVERITY.HIGH },
+    ],
+    LOGIC_ERROR: [
+        { regex: /for\s*\(\s*\w+\s*=\s*0\s*;\s*\w+\s*<\s*\w+\.length\s*;\s*\w+\s*\+\+\s*\)\s*\{[^}]*\w+\[\s*\w+\s*-\s*1\s*\][^}]*\}/m, severity: SEVERITY.HIGH },
+    ],
+    API_CONTRACT_VIOLATION: [
+        { regex: /\.map\s*\(\s*\w+\s*=>\s*\w+\s*\)\s*\.join/, severity: SEVERITY.MEDIUM },
+        { regex: /Object\.keys\s*\(\s*\w+\s*\)\s*\.map/, severity: SEVERITY.MEDIUM },
+        { regex: /JSON\.parse\s*\([^)]*\.trim\s*\(\s*\)/, severity: SEVERITY.MEDIUM },
+    ],
+    STATE_DESYNC: [
+        { regex: /setState\s*\(\s*\{[^}]*\w+:\s*\w+[^}]*\}[^}]*await[^}]*setState\s*\(\s*\{[^}]*\w+:/m, severity: SEVERITY.HIGH },
+    ],
+    TYPE_COERCION: [
+        { regex: /\w+\s*==\s*'\d+'/m, severity: SEVERITY.HIGH },
+    ],
+    MAGIC_NUMBER: [
+        { regex: /\b\d{4,}\b(?!\s*[/*]\s*\d)/, severity: SEVERITY.MEDIUM },
+        { regex: /timeout\s*:\s*\d+/m, severity: SEVERITY.LOW },
+        { regex: /retry\s*:\s*\d+/m, severity: SEVERITY.LOW },
+    ],
+    DEAD_CODE: [
+        { regex: /return\s+undefined\s*;[\s\S]*?return\s+undefined\s*;[\s\S]*?\}/m, severity: SEVERITY.MEDIUM },
+        { regex: /if\s*\(\s*false\s*\)\s*\{/m, severity: SEVERITY.MEDIUM },
+    ],
+    SIDE_EFFECT: [
+        { regex: /\+\+\s*\w+\s*;[\s\S]*?\w+\s*\+\+\s*;/m, severity: SEVERITY.MEDIUM },
+    ],
+    RESOURCE_LEAK: [
+        { regex: /fs\.readFile\s*\([^)]*\)[\s\S]*?(?!close|finally)/m, severity: SEVERITY.MEDIUM },
+    ],
+    BUILD_COMPLEXITY: [
+        { regex: /switch\s*\([^)]*\)\s*\{[^}]{200,}\}/m, severity: SEVERITY.MEDIUM },
+    ],
+};
 export class ProofVerifier {
     async verifyClaim(claim, cwd) {
         const normalizedClaim = claim.toLowerCase().trim();
@@ -856,10 +926,48 @@ export class AlgorithmicScanner {
             fileFindings.push(this.createFinding(SEVERITY.MEDIUM, 1, 'BundleSizeAnomaly', 'ARCHITECTURAL DECAY', 'Suspiciously small file', filePath, `Size: ${content.length} bytes`, 'Verify this file contains real implementation', 'STATIC'));
         }
         // =========================================================================
-        // LAYER 2: EXECUTION VERIFICATION - THEATRICAL CODE IS BANNED
+        // LAYER 2: BUILD-REPORT - ARCHITECTURE & LOGIC ANALYSIS
+        // Scans for actual software engineering flaws (not theatrical patterns)
         // =========================================================================
-        // SCAN: Simulated Execution (Layer 2) - BANNED - CRITICAL
-        fileFindings.push(...this.scanPatterns(filePath, content, lines, PATTERNS.SIMULATED_EXECUTION, 2, 'SIMULATED EXECUTION'));
+        // SCAN: Undefined/NULL Access (Layer 2) - RUNTIME CRASH RISK
+        fileFindings.push(...this.scanPatterns(filePath, content, lines, BUILD_PATTERNS.UNDEFINED_ACCESS, 2, 'UNDEFINED ACCESS'));
+        // SCAN: Null Pointer Risk (Layer 2) - RUNTIME CRASH RISK
+        fileFindings.push(...this.scanPatterns(filePath, content, lines, BUILD_PATTERNS.NULL_POINTER_RISK, 2, 'NULL POINTER RISK'));
+        // SCAN: Async/Await Error Handling (Layer 2) - RUNTIME CRASH RISK
+        fileFindings.push(...this.scanPatterns(filePath, content, lines, BUILD_PATTERNS.UNHANDLED_PROMISE, 2, 'UNHANDLED PROMISE'));
+        // SCAN: Race Conditions (Layer 2) - CONCURRENCY BUG
+        fileFindings.push(...this.scanPatterns(filePath, content, lines, BUILD_PATTERNS.RACE_CONDITION, 2, 'RACE CONDITION'));
+        // SCAN: Injection Vulnerabilities (Layer 2) - SECURITY CRITICAL
+        fileFindings.push(...this.scanPatterns(filePath, content, lines, BUILD_PATTERNS.INJECTION, 2, 'INJECTION VULNERABILITY'));
+        // SCAN: Error Handling Gaps (Layer 2) - SILENT FAILURE
+        fileFindings.push(...this.scanPatterns(filePath, content, lines, BUILD_PATTERNS.SWALLOWED_ERROR, 2, 'SWALLOWED ERROR'));
+        // SCAN: Memory Leaks (Layer 2) - RESOURCE LEAK
+        fileFindings.push(...this.scanPatterns(filePath, content, lines, BUILD_PATTERNS.MEMORY_LEAK, 2, 'MEMORY_LEAK'));
+        // SCAN: Circular Dependencies (Layer 2) - MODULE ERROR
+        fileFindings.push(...this.scanPatterns(filePath, content, lines, BUILD_PATTERNS.CIRCULAR_DEPENDENCY, 2, 'CIRCULAR DEPENDENCY'));
+        // SCAN: Logic Errors (Layer 2) - INCORRECT BEHAVIOR
+        fileFindings.push(...this.scanPatterns(filePath, content, lines, BUILD_PATTERNS.LOGIC_ERROR, 2, 'LOGIC ERROR'));
+        // SCAN: API Contract Violations (Layer 2) - INTERFACE BREACH
+        fileFindings.push(...this.scanPatterns(filePath, content, lines, BUILD_PATTERNS.API_CONTRACT_VIOLATION, 2, 'API CONTRACT VIOLATION'));
+        // SCAN: State Management Issues (Layer 2) - STATE BUG
+        fileFindings.push(...this.scanPatterns(filePath, content, lines, BUILD_PATTERNS.STATE_DESYNC, 2, 'STATE DESYNC'));
+        // SCAN: Type Coercion Bugs (Layer 2) - TYPE ERROR
+        fileFindings.push(...this.scanPatterns(filePath, content, lines, BUILD_PATTERNS.TYPE_COERCION, 2, 'TYPE COERCION'));
+        // SCAN: Magic Numbers (Layer 2) - CODE SMELL
+        fileFindings.push(...this.scanPatterns(filePath, content, lines, BUILD_PATTERNS.MAGIC_NUMBER, 2, 'MAGIC NUMBER'));
+        // SCAN: Dead Code (Layer 2) - UNREACHABLE
+        fileFindings.push(...this.scanPatterns(filePath, content, lines, BUILD_PATTERNS.DEAD_CODE, 2, 'DEAD CODE'));
+        // SCAN: Side Effects (Layer 2) - HIDDEN BEHAVIOR
+        fileFindings.push(...this.scanPatterns(filePath, content, lines, BUILD_PATTERNS.SIDE_EFFECT, 2, 'SIDE EFFECT'));
+        // SCAN: Resource Leaks (Layer 2) - HANDLE LEAK
+        fileFindings.push(...this.scanPatterns(filePath, content, lines, BUILD_PATTERNS.RESOURCE_LEAK, 2, 'RESOURCE_LEAK'));
+        // SCAN: Complexity Issues (Layer 2) - MAINTAINABILITY
+        fileFindings.push(...this.scanPatterns(filePath, content, lines, BUILD_PATTERNS.BUILD_COMPLEXITY, 2, 'COMPLEXITY'));
+        // =========================================================================
+        // LAYER 3: EXECUTION VERIFICATION - THEATRICAL CODE IS BANNED
+        // =========================================================================
+        // SCAN: Simulated Execution (Layer 3) - BANNED - CRITICAL
+        fileFindings.push(...this.scanPatterns(filePath, content, lines, PATTERNS.SIMULATED_EXECUTION, 3, 'SIMULATED EXECUTION'));
         // SCAN: Theatrical Code (Layer 2) - BANNED - CRITICAL
         fileFindings.push(...this.scanPatterns(filePath, content, lines, PATTERNS.THEATRICAL_CODE, 2, 'THEATRICAL CODE'));
         // SCAN: Stub Code (Layer 2) - BANNED - CRITICAL

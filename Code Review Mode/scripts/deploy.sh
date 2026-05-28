@@ -20,12 +20,19 @@ DIST_DIR="$SCRIPT_DIR/dist"
 
 echo "[2] Creating plugin directory..."
 mkdir -p "$PLUGIN_DIR/dist/identity"
+mkdir -p "$PLUGIN_DIR/identity/trident"
 
 echo "[3] Copying dist files..."
 cp "$DIST_DIR/index.js" "$PLUGIN_DIR/dist/"
 cp "$DIST_DIR/algorithmic-core.js" "$PLUGIN_DIR/dist/"
 cp "$DIST_DIR/artifact-writer.js" "$PLUGIN_DIR/dist/"
 cp "$DIST_DIR/identity/"* "$PLUGIN_DIR/dist/identity/"
+
+echo "[3b] Copying identity files..."
+cp "$SCRIPT_DIR/identity/trident/TRIDENT.md" "$PLUGIN_DIR/identity/trident/"
+cp "$SCRIPT_DIR/identity/trident/IDENTITY.md" "$PLUGIN_DIR/identity/trident/"
+cp "$SCRIPT_DIR/identity/trident/EXECUTION.md" "$PLUGIN_DIR/identity/trident/"
+cp "$SCRIPT_DIR/identity/trident/QUALITY.md" "$PLUGIN_DIR/identity/trident/"
 
 echo "[4] Updating opencode.json..."
 CONFIG_FILE="$HOME/.config/opencode/opencode.json"

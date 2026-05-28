@@ -65,7 +65,7 @@ A reviewer should NEVER:
 ## Output Structure
 
 Every audit produces:
-1. Markdown report saved to `TRIDENT_CODE_REVIEW_{context}_{date}.md`
+1. Markdown report saved to `TRIDENT_CODE_REVIEW_{context}_{date}.md` (and `TRIDENT_BUILD_REPORT_{context}_{date}.md` for layer-2 findings)
 2. Summary: severity counts, finding categories
 3. Detailed findings: file, line, pattern matched, evidence
 4. Remediation: HOW to fix each finding

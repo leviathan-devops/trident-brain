@@ -1,11 +1,13 @@
 {
   "name": "trident-brain-code-review",
-  "version": "3.3.1",
-  "description": "Algorithmic code review plugin - documentation-only, never edits - v3.3.1 adds session-based hook scoping",
+  "version": "3.3.3-FIXED",
+  "description": "TRIDENT v3.3.3-FIXED - Algorithmic Code Review Plugin. Self-contained anchor. Identity-aware, hook-scoped, anti-theatrical enforcement.",
   "main": "dist/index.js",
   "type": "module",
   "scripts": {
     "build": "tsc",
+    "deploy": "bash scripts/deploy-from-global-anchor.sh",
+    "lock": "bash scripts/lock-anchor.sh",
     "test": "bash scripts/test.sh"
   },
   "dependencies": {
@@ -13,6 +15,7 @@
   },
   "devDependencies": {
     "@types/node": "^20.19.39",
+    "esbuild": "^0.28.0",
     "typescript": "^5.9.3"
   }
 }

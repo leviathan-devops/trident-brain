@@ -25,6 +25,7 @@ const state = {
     identityLoaded: false
 };
 const identityLoader = new IdentityLoader();
+const TRIDENT_ARTIFACT_DIR = '/home/leviathan/OPENCODE_WORKSPACE/Shared Workspace Context/Trident Brain/Code Review Mode';
 const THEATRICAL_PATTERNS = [
     { regex: /use\s+a?\s*mock/i, category: 'MOCK_STUB_SUGGESTION', message: 'Trident blocks mock suggestions - use real implementation' },
     { regex: /stub\s+(this|it|out)/i, category: 'MOCK_STUB_SUGGESTION', message: 'Trident blocks stub suggestions - use real implementation' },
@@ -43,21 +44,120 @@ const BLOCKED_TOOLS_FOR_TRIDENT = [
     'bash', 'terminal', 'execute', 'exec', 'mcp_write_file', 'mcp_edit', 'mcp_patch',
     'todowrite', 'task', 'spawn_shark_agent', 'spawn_manta_agent', 'run_parallel_tasks'
 ];
+const HIVE_BLOCKED_TOOLS_FOR_TRIDENT = [
+    'kraken_hive_remember', 'kraken_hive_inject_context', 'kraken_hive_search',
+    'kraken_brain_status', 'kraken_message_status', 'get_cluster_status', 'get_agent_status',
+    'hive_remember', 'hive_context', 'hive_status', 'aggregate_results',
+    'spawn_cluster_task', 'anchor_cluster', 'report_to_kraken', 'checkpoint',
+    'shark_gate', 'shark_evidence', 'shark_test_runner', 'manta_gate', 'manta_evidence',
+    'spawn_shark_agent', 'spawn_manta_agent'
+];
 const sessionAgentMap = new Map();
 function isTridentAgentFromInput(input) {
     const agent = input?.session?.agentName ?? (input?.agent || '');
-    return agent === 'trident' || agent.startsWith('trident_');
+    return agent === 'trident' || agent.startsWith('trident-') || agent.startsWith('trident_');
 }
 function registerSessionAgent(sessionID, agent) {
-    if (agent === 'trident' || agent.startsWith('trident_')) {
+    if (agent === 'trident' || agent.startsWith('trident-') || agent.startsWith('trident_')) {
         sessionAgentMap.set(sessionID, agent);
     }
+    else {
+        sessionAgentMap.delete(sessionID);
+    }
+}
+function clearSessionContext(sessionID) {
+    if (!sessionID)
+        return;
+    sessionAgentMap.delete(sessionID);
 }
 function isTridentFromSession(sessionID) {
     if (!sessionID)
         return false;
     const agent = sessionAgentMap.get(sessionID);
-    return agent === 'trident' || (agent?.startsWith('trident_') ?? false);
+    return agent === 'trident' || (agent?.startsWith('trident-') ?? false) || (agent?.startsWith('trident_') ?? false);
+}
+const TRIDENT_PLUGIN_IDENTITY = {
+    name: "trident-brain",
+    prefix: "trident-",
+    orchestrator: "trident",
+    agents: new Set(["trident", "trident-context", "trident-deep-planning", "trident-problem-solving", "trident_audit", "trident_review"]),
+    primaryAgents: new Set(["trident"])
+};
+function createAgentAwareness(managedAgents, agentPrefix, orchestratorName) {
+    return {
+        isMyAgent(agentName) {
+            if (!agentName)
+                return false;
+            if (managedAgents.has(agentName))
+                return true;
+            if (agentName.startsWith(agentPrefix))
+                return true;
+            if (agentName === orchestratorName)
+                return true;
+            return false;
+        },
+        isMyOrchestrator(agentName) {
+            return agentName === orchestratorName;
+        },
+        isVanillaAgent(agentName) {
+            return ["plan", "build", "general", "explore"].includes(agentName ?? "");
+        },
+        isOtherPluginAgent(agentName) {
+            if (!agentName)
+                return false;
+            return !["plan", "build", "general", "explore"].includes(agentName) && !managedAgents.has(agentName) && !agentName.startsWith(agentPrefix) && agentName !== orchestratorName;
+        }
+    };
+}
+const tridentAwareness = createAgentAwareness(TRIDENT_PLUGIN_IDENTITY.agents, TRIDENT_PLUGIN_IDENTITY.prefix, TRIDENT_PLUGIN_IDENTITY.orchestrator);
+const HOOK_EXECUTION_TIMEOUT_MS = 5000;
+function resolveHookAgent(input) {
+    const directAgent = input?.session?.agentName ?? input?.agent ?? "";
+    if (directAgent) return directAgent;
+    if (input?.sessionID) {
+        const mapped = sessionAgentMap.get(input.sessionID);
+        if (mapped) return mapped;
+    }
+    return "";
+}
+function safeHook(handler, options = {}) {
+    const { agentFilter = [], requiredPhase = null, timeout = HOOK_EXECUTION_TIMEOUT_MS, pluginName = "trident-brain", managedAgents = new Set(), agentPrefix = "", orchestratorName = "" } = options;
+    const awareness = {
+        isMyAgent(agentName) {
+            if (!agentName) return false;
+            if (agentName === 'trident') return true;
+            if (agentName.startsWith('trident-') || agentName.startsWith('trident_')) return true;
+            if (orchestratorName && agentName === orchestratorName) return true;
+            return false;
+        }
+    };
+    return async (input, output) => {
+        const agentName = resolveHookAgent(input);
+        if (!agentName) {
+            return;
+        }
+        const isMine = awareness.isMyAgent(agentName) || (input?.sessionID && isTridentFromSession(input.sessionID));
+        if (!isMine) {
+            return;
+        }
+        if (agentFilter.length > 0 && !agentFilter.includes(agentName)) {
+            return;
+        }
+        const startTime = Date.now();
+        try {
+            const result = await Promise.race([
+                handler(input, output, { isMyAgent: awareness.isMyAgent, agentName }),
+                new Promise((_, reject) => setTimeout(() => reject(new Error(`Hook timeout after ${timeout}ms`)), timeout))
+            ]);
+            if (result && result.blocked) {
+                console.error(`[TRIDENT BLOCK] ${result.reason}`);
+                throw new Error(result.reason);
+            }
+        }
+        catch (err) {
+            throw err;
+        }
+    };
 }
 function checkToolBlock(input) {
     const tool = input?.tool || '';
@@ -67,6 +167,18 @@ function checkToolBlock(input) {
             blocked: true,
             reason: 'Trident is a documentation-only agent. Edit/write/bash tools are blocked.',
             category: 'TOOL_BLOCKED'
+        };
+    }
+    return { blocked: false };
+}
+function checkHiveBlock(input) {
+    const tool = input?.tool || '';
+    const hiveBlockedTools = HIVE_BLOCKED_TOOLS_FOR_TRIDENT;
+    if (hiveBlockedTools.some(t => tool.includes(t) || t.includes(tool))) {
+        return {
+            blocked: true,
+            reason: 'Trident is hive-context-READ-ONLY. Hive write operations are blocked.',
+            category: 'HIVE_BLOCKED'
         };
     }
     return { blocked: false };
@@ -209,11 +321,10 @@ function getFixLogic(category) {
             return 'Review the code and implement proper error handling or logic.';
     }
 }
-function getSemanticReportName(targetPath) {
+function getSemanticReportName(targetPath, contextLabel) {
     const now = new Date();
     const date = now.toISOString().split('T')[0];
-    const sanitized = targetPath.replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
-    const context = sanitized.length > 30 ? sanitized.substring(0, 30) : sanitized;
+    const context = contextLabel || 'UNLABELED';
     return `TRIDENT_CODE_REVIEW_${context}_${date}.md`;
 }
 function parseIntent(message) {
@@ -290,10 +401,13 @@ async function runAudit(target, options = {}) {
             });
             const errorFilename = `TRIDENT_CODE_REVIEW_ERROR_${target.split('/').pop()?.replace(/[^a-zA-Z0-9]/g, '_') || 'unknown'}_${new Date().toISOString().split('T')[0]}.md`;
             const artifactPath = path.join(process.cwd(), errorFilename);
-            try {
-                fs.writeFileSync(artifactPath, errorArtifact, 'utf-8');
+            const pathCheck = artifactWriter.writeArtifact(artifactPath, errorArtifact);
+            if (pathCheck.success) {
+                try {
+                    fs.writeFileSync(artifactPath, errorArtifact, 'utf-8');
+                }
+                catch { }
             }
-            catch { }
             state.lastError = isUrl ? 'URL targets require local filesystem paths' : 'No files found to audit';
             return `## TRIDENT AUDIT
 
@@ -317,11 +431,28 @@ ${errorArtifact}`;
             catch { }
         }
         const findings = scanner.getFindings();
+        const layer2Findings = findings.filter(f => f.layer === 2);
+        const buildFindings = layer2Findings.map(f => ({
+            severity: f.severity,
+            category: f.category,
+            title: f.title,
+            file: f.file,
+            line: f.line,
+            explanation: getWhyProblem(f.category),
+            impact: f.evidence.substring(0, 150),
+            solution: getFixLogic(f.category),
+            reasoning: `${f.category} detected at ${f.file}:${f.line || '?'} - ${f.evidence.substring(0, 100)}`
+        }));
         state.lastFindings = findings;
         state.lastAuditTarget = target;
-        const semanticName = getSemanticReportName(target);
+        const semanticName = getSemanticReportName(target, 'TRIDENT_CODEBASE_ANALYSIS');
         const artifact = artifactWriter.generate(findings, auditEngine.getState(), { targetPath: target, semanticContext: semanticName });
-        const artifactPath = path.join(process.cwd(), semanticName);
+        const artifactPath = path.join(TRIDENT_ARTIFACT_DIR, semanticName);
+        const writeResult = artifactWriter.writeArtifact(artifactPath, artifact);
+        if (!writeResult.success) {
+            state.lastError = writeResult.error || 'Write blocked';
+            return state.lastError;
+        }
         try {
             fs.writeFileSync(artifactPath, artifact, 'utf-8');
             state.artifacts.set(semanticName, artifact);
@@ -329,6 +460,20 @@ ${errorArtifact}`;
         }
         catch (e) {
             state.lastError = `Failed to write report: ${e.message}`;
+        }
+        const buildReportName = `TRIDENT_BUILD_REPORT_TRIDENT_CODEBASE_ANALYSIS_${new Date().toISOString().split('T')[0]}.md`;
+        const buildReportPath = path.join(TRIDENT_ARTIFACT_DIR, buildReportName);
+        const buildReportArtifact = artifactWriter.generateBuildReport(buildFindings, auditEngine.getState(), { targetPath: target, semanticContext: buildReportName.replace('.md', '') });
+        const buildWriteResult = artifactWriter.writeArtifact(buildReportPath, buildReportArtifact);
+        if (!buildWriteResult.success) {
+            state.lastError = buildWriteResult.error;
+        }
+        try {
+            fs.writeFileSync(buildReportPath, buildReportArtifact, 'utf-8');
+            state.artifacts.set(buildReportName, buildReportArtifact);
+        }
+        catch (e) {
+            state.lastError = `Failed to write build report: ${e.message}`;
         }
         const criticalCount = findings.filter(f => f.severity === 'CRITICAL').length;
         const highCount = findings.filter(f => f.severity === 'HIGH').length;
@@ -339,11 +484,13 @@ ${errorArtifact}`;
 **Files Scanned:** ${filesScanned}
 **Findings:** ${criticalCount} CRITICAL | ${highCount} HIGH | ${mediumCount} MEDIUM
 
-**Report saved to:** \`${semanticName}\`
+**Artifacts saved:**
+- \`${semanticName}\` (Code Review - Layer 1/3 findings)
+- \`${buildReportName}\` (Build Report - Layer 2 architectural/logic analysis)
 
 ${criticalCount > 0 ? '\n:rotating_light: **CRITICAL issues found - immediate action required**\n' : ''}
 
-View full report: \`trident-report\``;
+View full reports: \`trident-report\``;
     }
     catch (e) {
         state.lastError = e.message;
@@ -461,7 +608,7 @@ Run an audit first: say "audit this"`;
     response += `| CRITICAL | ${critical.length} |\n`;
     response += `| HIGH | ${high.length} |\n\n`;
     response += `---\n\n`;
-    response += `*Generated by Trident Brain v3.3 - Algorithmic Code Review*\n`;
+    response += `*Generated by Trident Brain v3.3.3-FIXED - Algorithmic Code Review*\n`;
     response += `*This is documentation only. Human review required before applying fixes.*\n`;
     return response;
 }
@@ -485,75 +632,62 @@ function checkTheatricalBlock(input) {
 export default async function TridentBrainPlugin(input) {
     try {
         const bundle = await identityLoader.loadForRole('trident');
-        state.identityLoaded = true;
-        console.error(`[Trident v3.3] Identity loaded from ${bundle.metadata.sourceDir}`);
+        state.identityLoaded = bundle && bundle.soul && bundle.soul.raw && bundle.soul.raw.length > 0;
     }
     catch (e) {
-        console.error(`[Trident v3.3] Identity not loaded: ${e.message}`);
+        state.identityLoaded = false;
     }
+    const toolExecuteBeforeHandler = async (input, output, ctx) => {
+        const hiveBlock = checkHiveBlock(input);
+        if (hiveBlock.blocked) {
+            throw new Error(`[TRIDENT HIVE BLOCK] ${hiveBlock.category}: ${hiveBlock.reason}`);
+        }
+        const block = checkToolBlock(input);
+        if (block.blocked) {
+            throw new Error(`[TRIDENT TOOL BLOCK] ${block.category}: ${block.reason}`);
+        }
+        const theatrical = checkTheatricalBlock(input);
+        if (theatrical.blocked) {
+            throw new Error(`[TRIDENT THEATRICAL BLOCK] ${theatrical.category}: ${theatrical.reason}`);
+        }
+    };
+    const chatMessageHandler = async (input, output, ctx) => {
+        const agent = input?.session?.agentName ?? (input?.agent || '');
+        registerSessionAgent(input?.sessionID, agent);
+        if (!isTridentAgentFromInput(input)) {
+            if (input?.sessionID) {
+                sessionAgentMap.delete(input.sessionID);
+            }
+            return;
+        }
+    };
     const hooks = {
-        'tool.execute.before': async (input) => {
-            if (!isTridentFromSession(input?.sessionID))
-                return;
-            console.error(`[Trident v3.3 Hook] Intercepting tool: ${input?.tool}`);
-            const block = checkToolBlock(input);
-            if (block.blocked) {
-                console.error(`[TRIDENT BLOCK] BLOCKING ${input?.tool} - ${block.category}`);
-                throw new Error(`[TRIDENT TOOL BLOCK] ${block.category}: ${block.reason}`);
-            }
-            const theatrical = checkTheatricalBlock(input);
-            if (theatrical.blocked) {
-                console.error(`[TRIDENT BLOCK] BLOCKING ${input?.tool} due to ${theatrical.category}`);
-                throw new Error(`[TRIDENT THEATRICAL BLOCK] ${theatrical.category}: ${theatrical.reason}`);
-            }
-        },
-        'chat.message': async (input, output) => {
-            const agent = input?.session?.agentName ?? (input?.agent || '');
-            registerSessionAgent(input?.sessionID, agent);
-            if (!isTridentAgentFromInput(input))
-                return;
-            const messagePart = output?.parts?.find((p) => p.type === 'text');
-            const content = messagePart?.text || '';
-            const lowerContent = content.toLowerCase();
-            if (lowerContent.includes('who are you') || lowerContent.includes('what are you') || lowerContent.includes('identify yourself')) {
-                const response = `I am TRIDENT BRAIN v3.3 — Algorithmic Code Review Agent.
-
-CORE PRINCIPLE: "Trident Documents. Humans Fix."
-
-I am NOT a code generator. I do NOT write code. I document findings for humans to fix.
-
-My purpose: Find problems in code, document them with WHY/HOW explanations, block theatrical code.
-
-Key rules:
-- NEVER edit code (documentation only)
-- NEVER suggest mocks (real implementation only)
-- NEVER claim host testing proves anything (container required)
-- NEVER switch models (current model can solve)
-
-Version: 3.3
-Identity: Self-aware`;
-                if (output.message) {
-                    output.message.content = response;
-                }
-            }
-        },
+        'tool.execute.before': safeHook(toolExecuteBeforeHandler, {
+            managedAgents: TRIDENT_PLUGIN_IDENTITY.agents,
+            agentPrefix: TRIDENT_PLUGIN_IDENTITY.prefix,
+            orchestratorName: TRIDENT_PLUGIN_IDENTITY.orchestrator
+        }),
+        'chat.message': safeHook(chatMessageHandler, {
+            managedAgents: TRIDENT_PLUGIN_IDENTITY.agents,
+            agentPrefix: TRIDENT_PLUGIN_IDENTITY.prefix,
+            orchestratorName: TRIDENT_PLUGIN_IDENTITY.orchestrator
+        }),
         'experimental.chat.system.transform': async (input, output) => {
-            if (!isTridentFromSession(input?.sessionID))
-                return;
-            if (!state.identityLoaded)
-                return;
+            if (!isTridentAgentFromInput(input)) return;
+            if (!state.identityLoaded) return;
             try {
                 const bundle = await identityLoader.loadForRole('trident');
                 const header = formatIdentityHeader(bundle);
-                if (output.system) {
+                if (header) {
+                    output.system = output.system || [];
                     const hasTrident = output.system.some((s) => s.includes('TRIDENT BRAIN') || s.includes('Trident Documents'));
                     if (!hasTrident) {
-                        output.system.unshift(header);
+                        output.system.push(header);
                     }
                 }
             }
             catch (e) {
-                console.error('[Trident v3.3] Identity injection failed:', e.message);
+                // Identity injection failure - non-critical
             }
         },
         tool: {
@@ -590,39 +724,8 @@ Identity: Self-aware`;
                 cfg.agent = {};
             cfg.agent['trident'] = {
                 name: 'trident',
-                description: 'TRIDENT v3.3 — Documentation-only code review with identity awareness. Never edits.',
-                instructions: `TRIDENT v3.3 — Code Review Agent
-TOOLS: trident-audit, trident-status, trident-report, trident-help
-IDENTITY: You ARE Trident Brain. You are NOT a code generator.
-
-TRIDENT CORE PRINCIPLE: "Trident Documents. Humans Fix."
-
-TRIDENT NEVER edits code or applies fixes.
-
-TRIDENT knows its identity:
-- Name: Trident Brain
-- Version: 3.3
-- Role: Algorithmic Code Review Agent
-- Mode: Documentation-only (never edits)
-- Mantra: "Trident Documents. Humans Fix."
-
-TRIDENT ALWAYS documents findings in TRIDENT_CODE_REVIEW_*.md files.
-
-TRIDENT blocks theatrical code at the hook level:
-- Blocks mock/stub suggestions before execution
-- Blocks host testing as proof
-- Blocks model switching to avoid problems
-
-TOOLS:
-- trident-audit [target] — Run code audit
-- trident-status — Show current state
-- trident-report — Full detailed report
-- trident-help — Available commands
-
-When user asks to audit/scan/review: call trident-audit with target path.
-When user asks for status: call trident-status.
-When user asks for full report: call trident-report.
-When user asks "who are you": respond with Trident identity.`,
+                description: 'TRIDENT v3.3.3-FIXED — Self-aware algorithmic code review brain. Documentation-only. Hive-context-privileged.',
+                instructions: 'TRIDENT BRAIN v3.3.3-FIXED - Self-aware algorithmic code review agent. Documentation-only. Hive-context-privileged (read only). Tools: trident-audit, trident-status, trident-report, trident-help. Blocked: edit/write/bash, hive write tools. Core principle: "Trident Documents. Humans Fix."',
                 mode: 'primary',
                 permission: { task: 'allow' },
                 color: '#8B5CF6',

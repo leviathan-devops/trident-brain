@@ -5,9 +5,14 @@
  */
 import * as fs from 'fs/promises';
 import * as path from 'path';
-const IDENTITY_DIR = process.env.TRIDENT_IDENTITY_DIR || '/root/.config/opencode/plugins/trident/identity';
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const PLUGIN_ROOT = path.resolve(__dirname, '..', '..');
+const IDENTITY_DIR = process.env.TRIDENT_IDENTITY_DIR || path.join(PLUGIN_ROOT, 'identity');
 const TRIDENT_PLUGIN_NAME = process.env.TRIDENT_PLUGIN_NAME || 'trident';
 const KNOWN_LOCATIONS = [
+    path.join(PLUGIN_ROOT, 'identity'),
     '/root/.config/opencode/plugins/trident/identity',
     '/opt/opencode/identity/trident',
     'identity',
@@ -73,8 +78,10 @@ export class IdentityLoader {
         const identityRaw = files['IDENTITY.md'] || '';
         const executionRaw = files['EXECUTION.md'] || '';
         const qualityRaw = files['QUALITY.md'] || '';
+        const filesFound = [soulRaw, identityRaw, executionRaw, qualityRaw].filter(f => f.length > 0).length;
         const bundle = {
             role,
+            filesFound,
             soul: {
                 raw: soulRaw,
                 directives: this.extractDirectives(soulRaw),
@@ -100,7 +107,7 @@ export class IdentityLoader {
             },
             metadata: {
                 loadedAt: new Date().toISOString(),
-                version: '3.3.0',
+                version: '3.3.3-FIXED',
                 sourceDir: roleDir,
             },
         };

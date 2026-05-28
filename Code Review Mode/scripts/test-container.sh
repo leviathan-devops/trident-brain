@@ -19,12 +19,19 @@ SNAP=$(mktemp -d -p /tmp snap.XXXX)
 echo "SNAP=$SNAP"
 
 mkdir -p "$SNAP/config/plugins/$AGENT_NAME/dist/identity"
+mkdir -p "$SNAP/config/plugins/$AGENT_NAME/identity/trident"
 
 # Copy plugin files
 cp "$PLUGIN_SRC/dist/index.js" "$SNAP/config/plugins/$AGENT_NAME/dist/"
 cp "$PLUGIN_SRC/dist/algorithmic-core.js" "$SNAP/config/plugins/$AGENT_NAME/dist/"
 cp "$PLUGIN_SRC/dist/artifact-writer.js" "$SNAP/config/plugins/$AGENT_NAME/dist/"
 cp "$PLUGIN_SRC/dist/identity/"* "$SNAP/config/plugins/$AGENT_NAME/dist/identity/"
+
+# Copy identity files
+cp "$PLUGIN_SRC/identity/trident/TRIDENT.md" "$SNAP/config/plugins/$AGENT_NAME/identity/trident/"
+cp "$PLUGIN_SRC/identity/trident/IDENTITY.md" "$SNAP/config/plugins/$AGENT_NAME/identity/trident/"
+cp "$PLUGIN_SRC/identity/trident/EXECUTION.md" "$SNAP/config/plugins/$AGENT_NAME/identity/trident/"
+cp "$PLUGIN_SRC/identity/trident/QUALITY.md" "$SNAP/config/plugins/$AGENT_NAME/identity/trident/"
 
 # Create opencode.json
 cat > "$SNAP/config/opencode.json" << EOF
