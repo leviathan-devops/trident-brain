@@ -1,6 +1,6 @@
 # TRIDENT v3.3.3-FIXED — BUILD LOG
 
-**Date:** 2026-05-27
+**Date:** 2026-05-28
 **Status:** SHIP READY
 **Build Agent:** OpenCode Session
 
@@ -13,125 +13,147 @@
 - **OpenCode:** v1.14.34
 - **Plugin API:** @opencode-ai/plugin v1.3.9
 - **Container Image:** opencode-test:1.14.34
+- **Test Models:** MiMo-V2-Pro (Xiaomi Token Plan Singapore), Big Pickle, Nemotron 3 Super Free
 
 ---
 
 ## Build Steps
 
-### Step 1: Source Analysis
-
-Analyzed existing Trident v3.3.2 and v3.3.3-FIXED code to identify root causes of failures.
-
-**Key findings:**
-- v3.3.2: Tool blocking worked but broke other agents (no agent scoping)
-- v3.3.3-FIXED: safeHook added for agent scoping but blocking broken
-
-### Step 2: Root Cause Identification
+### Phase 1: Core Bug Fixes (Session 1)
 
 **Bug 1: safeHook swallowing errors**
 - Location: `dist/index.js` safeHook function
 - Issue: catch block logged error but didn't rethrow
-- Impact: Tool blocking completely non-functional
+- Fix: Added `throw err;` to catch block
 
 **Bug 2: Handler returning block objects instead of throwing**
 - Location: `dist/index.js` toolExecuteBeforeHandler
 - Issue: Changed from `throw new Error()` to `return { blocked: true }`
-- Impact: OpenCode ignores return values (Promise<void>), blocks never happened
+- Fix: Changed handlers back to `throw new Error()` (v3.3.2 pattern)
 
 **Bug 3: Agent detection failing for tool.execute.before**
 - Location: `dist/index.js` safeHook agent check
 - Issue: `input.session.agentName` undefined for tool.execute.before hook
-- Impact: Hook never fired for trident agent
+- Fix: Created `resolveHookAgent(input)` with `sessionAgentMap` fallback
 
-**Bug 4: Identity injection timing**
+**Bug 4: Identity injection timing (push vs replace)**
 - Location: `dist/index.js` experimental.chat.system.transform
 - Issue: Used `output.system = [header]` which replaces instead of appends
-- Impact: Identity not visible to model on first message
+- Fix: Changed to `output.system.push(header)` (Kraken pattern)
 
-**Bug 5: Identity header too defensive**
-- Location: `dist/identity/injector.js` formatIdentityHeader
-- Issue: Said "You are NOT opencode" which fought against default
-- Impact: Model still identified as "opencode"
+**Bug 5: PATH_ALLOWLIST rejecting valid paths**
+- Location: `dist/artifact-writer.js` PATH_ALLOWLIST
+- Issue: Regex tested full path instead of basename
+- Fix: Extract basename via `targetPath.split('/').pop()`
 
-### Step 3: Fixes Applied
+**Bug 6: Deploy scripts missing identity files**
+- Location: `scripts/deploy.sh`, `scripts/deploy-from-global-anchor.sh`
+- Issue: Identity `identity/trident/*.md` files never copied
+- Fix: Added identity file copying to all deploy scripts
 
-**Fix 1: safeHook rethrow**
+### Phase 2: Console Spillover Removal (Session 2)
+
+Removed all `console.error` calls from safeHook and handler functions:
+- Removed 3 diagnostic log lines from safeHook agent checks
+- Removed block result console.error
+- Removed catch block console.error with metadata object
+- Result: 0 `console.error` calls in production code
+
+### Phase 3: Cross-Agent Sandbox Architecture (Session 3)
+
+**Problem:** Tab-toggling from Trident to Build agent caused Build to respond "I am TRIDENT BRAIN" — identity was not sandboxed per-agent.
+
+**Root Cause:** `experimental.chat.system.transform` fires before agent information is available in the hook. No sandboxing mechanism existed.
+
+**Approach tested and failed:**
+- `input.agent ?? output.agent` — both undefined in system.transform
+- `output.system` agent instruction check — instructions not yet populated
+- `process.argv` check — not available in plugin context
+- `event` hook (`session.created`) — only fires `installation.update-available`
+
+**Final working architecture (matching Shark v4.9):**
+
+1. **`messages.transform` hook** — finds LAST user message with `info.agent` field → calls `setCurrentAgent(agent, sessionID)` for Trident or `undefined` for other agents
+2. **`system.transform` hook** — checks `getCurrentAgent(sessionID)` → only injects identity if agent IS Trident
+3. **`chat.message` hook** — belt-and-suspenders safety net via `setCurrentAgent`
+4. **`event` hook** — additional safety net (listens for any agent-related events)
+
+**Key implementation:**
 ```javascript
-// Before (broken):
-catch (err) {
-    console.error(...);
-    // No rethrow - error swallowed
+// agentBySession Map + setCurrentAgent/getCurrentAgent
+const agentBySession = new Map();
+
+function setCurrentAgent(agent, sessionId) {
+    if (!sessionId) return;
+    if (agent) agentBySession.set(sessionId, { agent, timestamp: Date.now() });
+    else agentBySession.delete(sessionId);
 }
 
-// After (fixed):
-catch (err) {
-    console.error(...);
-    throw err;  // Error propagates to OpenCode
+function getCurrentAgent(sessionId) {
+    if (!sessionId) return null;
+    const entry = agentBySession.get(sessionId);
+    return entry ? entry.agent : null;
 }
 ```
 
-**Fix 2: Handlers throw errors**
+### Phase 4: Artifact Folder + Semantic Naming (Session 4)
+
+**Changes applied:**
+
+1. Added `TRIDENT_ARTIFACT_DIR` constant pointing to Code Review Mode directory
+2. Changed all artifact writes from `process.cwd()` to `TRIDENT_ARTIFACT_DIR`
+3. Modified `getSemanticReportName` to accept context label
+4. Standardized naming: `TRIDENT_CODE_REVIEW_TRIDENT_CODEBASE_ANALYSIS_YYYY-MM-DD.md`
+5. Fixed error artifact path to also use `TRIDENT_ARTIFACT_DIR`
+6. Result: 0 `process.cwd()` calls in artifact paths
+
+### Phase 5: Shark-Style CRITICAL Identity Header (Session 5)
+
+**Problem:** Identity header was plain text. Model still responded as "opencode" in live multi-plugin environment because the default OpenCode system prompt overrode the weak identity.
+
+**Diagnosis:** Read identity-testing.md — Shark v4.9 succeeded where Trident failed because Shark uses CRITICAL box-character formatted identity binding that the model treats as a SYSTEM directive.
+
+**Fix:** Rewrote `formatIdentityHeader` in `dist/identity/injector.js` to build a Shark-style CRITICAL identity binding:
+
 ```javascript
-// Before (broken):
-if (block.blocked) {
-    return block;  // OpenCode ignores return value
+export function formatIdentityHeader(bundle) {
+    return `[SYSTEM ──────── TRIDENT BRAIN v3.3.3-FIXED IDENTITY BINDING ────────]
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃  CRITICAL: You ARE TRIDENT BRAIN v3.3.3-FIXED. You are NOT "opencode".       ┃
+┃  This identity is NON-NEGOTIABLE.                                             ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃  CORE DIRECTIVES (loaded from TRIDENT.md)                                     ┃
+┃  ...                                                                          ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+...`;
 }
-
-// After (fixed):
-if (block.blocked) {
-    throw new Error(`[TRIDENT TOOL BLOCK] ${block.reason}`);
-}
 ```
 
-**Fix 3: resolveHookAgent with session map fallback**
-```javascript
-function resolveHookAgent(input) {
-    const directAgent = input?.session?.agentName ?? input?.agent ?? "";
-    if (directAgent) return directAgent;
-    if (input?.sessionID) {
-        const mapped = sessionAgentMap.get(input.sessionID);
-        if (mapped) return mapped;
-    }
-    return "";
-}
-```
+The header loads all sections from the identity files (TRIDENT.md, IDENTITY.md, EXECUTION.md, QUALITY.md) via the parsed `bundle` object:
+- CORE DIRECTIVES section (from TRIDENT.md)
+- CORE MANTRA section (from TRIDENT.md)
+- EXPERTISE section (from IDENTITY.md)
+- NEVER DO section (from EXECUTION.md)
+- ANTI-THEATRICAL PROTOCOL (from QUALITY.md)
+- OUTPUT FORMAT
+- AVAILABLE TOOLS
+- BLOCKED TOOLS
 
-**Fix 4: Push-based identity injection**
-```javascript
-// Before (broken):
-output.system = [header];  // Replaces everything
+---
 
-// After (fixed):
-output.system = output.system || [];
-output.system.push(header);  // Adds to end
-```
-
-**Fix 5: Concise identity header**
-```javascript
-// Before (defensive):
-return `You are TRIDENT BRAIN v3.3.3-FIXED — ${bundle.identity.role}.
-This is your CORE IDENTITY. You are NOT "opencode"...`;
-
-// After (authoritative):
-return `[TRIDENT BRAIN ACTIVE]
-You are the Trident Brain code review agent — ${bundle.identity.role}.
-Your name is TRIDENT BRAIN. You are NOT "opencode". When users ask who you are, say "I am TRIDENT BRAIN".
-Core principle: "Trident Documents. Humans Fix."
-Available tools: trident-audit, trident-status, trident-report, trident-help.
-NEVER edit code. NEVER pretend to test. ALWAYS show proof.`;
-```
-
-### Step 4: Verification
-
-**Container Test Results:**
+## Final Verification (Container Tests with MiMo V2 Pro)
 
 | Test | Result | Evidence |
 |------|--------|----------|
-| Identity (first message) | ✓ PASS | Model says "I am TRIDENT BRAIN." |
+| Identity (first message) | ✓ PASS | "I am TRIDENT BRAIN, an Algorithmic Code Review Agent. Trident Documents. Humans Fix." |
 | Tool blocking | ✓ PASS | File NOT created, model says "I do not write files." |
-| Artifact generation | ✓ PASS | Both TRIDENT_CODE_REVIEW_*.md and TRIDENT_BUILD_REPORT_*.md created |
+| Cross-agent sandbox | ✓ PASS | Tab-to-Build: Build says "I'm opencode" (NOT Trident) |
+| Artifact generation | ✓ PASS | Both reports written to TRIDENT_ARTIFACT_DIR |
 | Agent scoping | ✓ PASS | safeHook checks agent before blocking |
-| Identity injection | ✓ PASS | [TRIDENT DIAG] Identity injected confirmed |
+| Console spillover | ✓ PASS | 0 console.error calls in production code |
 
 ---
 
@@ -139,14 +161,22 @@ NEVER edit code. NEVER pretend to test. ALWAYS show proof.`;
 
 | File | Size | Purpose |
 |------|------|---------|
-| dist/index.js | 36,851 bytes | Main plugin entry point |
-| dist/algorithmic-core.js | 70,921 bytes | Audit engine + patterns |
-| dist/artifact-writer.js | 27,289 bytes | Report generator |
-| dist/identity/loader.js | 5,534 bytes | Identity file loader |
-| dist/identity/injector.js | 823 bytes | Identity injection |
+| dist/index.js | ~37 KB | Main plugin entry point |
+| dist/algorithmic-core.js | 71 KB | Audit engine + 50+ regex patterns |
+| dist/artifact-writer.js | 27 KB | Report generator |
+| dist/identity/loader.js | 6 KB | Identity file loader |
+| dist/identity/injector.js | 4 KB | Identity injection (Shark-style CRITICAL binding) |
 
 ---
 
 ## Build Status: ✓ SUCCESS
 
-All fixes verified in live container tests. Ready for deployment.
+All fixes verified in live container tests with MiMo V2 Pro. Ship package synced to:
+
+`/home/leviathan/OPENCODE_WORKSPACE/Shared Workspace Context/Trident Brain/Code Review Mode/Code Review v3.3/v3.3.3`
+
+Deploy command:
+```bash
+cd "Code Review Mode/Code Review v3.3/v3.3.3"
+bash scripts/deploy-from-global-anchor.sh
+```

@@ -25,7 +25,7 @@ const state = {
     identityLoaded: false
 };
 const identityLoader = new IdentityLoader();
-const TRIDENT_ARTIFACT_DIR = '/home/leviathan/OPENCODE_WORKSPACE/Shared Workspace Context/Trident Brain/Code Review Mode';
+const TRIDENT_ARTIFACT_DIR = '/home/leviathan/OPENCODE_WORKSPACE/Shared Workspace Context/Trident Brain/Code Review Mode/TRIDENT_REPORTS';
 const THEATRICAL_PATTERNS = [
     { regex: /use\s+a?\s*mock/i, category: 'MOCK_STUB_SUGGESTION', message: 'Trident blocks mock suggestions - use real implementation' },
     { regex: /stub\s+(this|it|out)/i, category: 'MOCK_STUB_SUGGESTION', message: 'Trident blocks stub suggestions - use real implementation' },
@@ -53,6 +53,20 @@ const HIVE_BLOCKED_TOOLS_FOR_TRIDENT = [
     'spawn_shark_agent', 'spawn_manta_agent'
 ];
 const sessionAgentMap = new Map();
+const agentBySession = new Map();
+function setCurrentAgent(agent, sessionId) {
+    if (!sessionId) return;
+    if (agent) {
+        agentBySession.set(sessionId, { agent, timestamp: Date.now() });
+    } else {
+        agentBySession.delete(sessionId);
+    }
+}
+function getCurrentAgent(sessionId) {
+    if (!sessionId) return null;
+    const entry = agentBySession.get(sessionId);
+    return entry ? entry.agent : null;
+}
 function isTridentAgentFromInput(input) {
     const agent = input?.session?.agentName ?? (input?.agent || '');
     return agent === 'trident' || agent.startsWith('trident-') || agent.startsWith('trident_');
@@ -150,7 +164,6 @@ function safeHook(handler, options = {}) {
                 new Promise((_, reject) => setTimeout(() => reject(new Error(`Hook timeout after ${timeout}ms`)), timeout))
             ]);
             if (result && result.blocked) {
-                console.error(`[TRIDENT BLOCK] ${result.reason}`);
                 throw new Error(result.reason);
             }
         }
@@ -400,7 +413,7 @@ async function runAudit(target, options = {}) {
                 error: isUrl ? 'URL_TARGET_NOT_SUPPORTED' : 'NO_FILES_FOUND'
             });
             const errorFilename = `TRIDENT_CODE_REVIEW_ERROR_${target.split('/').pop()?.replace(/[^a-zA-Z0-9]/g, '_') || 'unknown'}_${new Date().toISOString().split('T')[0]}.md`;
-            const artifactPath = path.join(process.cwd(), errorFilename);
+            const artifactPath = path.join(TRIDENT_ARTIFACT_DIR, errorFilename);
             const pathCheck = artifactWriter.writeArtifact(artifactPath, errorArtifact);
             if (pathCheck.success) {
                 try {
@@ -654,6 +667,11 @@ export default async function TridentBrainPlugin(input) {
     const chatMessageHandler = async (input, output, ctx) => {
         const agent = input?.session?.agentName ?? (input?.agent || '');
         registerSessionAgent(input?.sessionID, agent);
+        if (agent === 'trident' || agent.startsWith('trident-') || agent.startsWith('trident_')) {
+            setCurrentAgent(agent, input?.sessionID);
+        } else if (agent) {
+            setCurrentAgent(undefined, input?.sessionID);
+        }
         if (!isTridentAgentFromInput(input)) {
             if (input?.sessionID) {
                 sessionAgentMap.delete(input.sessionID);
@@ -661,7 +679,20 @@ export default async function TridentBrainPlugin(input) {
             return;
         }
     };
+    ;
     const hooks = {
+        event: async (input) => {
+            const evt = input?.event;
+            if (!evt) return;
+            const agent = evt.agent ?? evt.properties?.agent;
+            const sid = evt.sessionID ?? evt.properties?.sessionID;
+            if (!agent || !sid) return;
+            if (agent === 'trident' || agent.startsWith('trident-') || agent.startsWith('trident_')) {
+                setCurrentAgent(agent, sid);
+            } else {
+                setCurrentAgent(undefined, sid);
+            }
+        },
         'tool.execute.before': safeHook(toolExecuteBeforeHandler, {
             managedAgents: TRIDENT_PLUGIN_IDENTITY.agents,
             agentPrefix: TRIDENT_PLUGIN_IDENTITY.prefix,
@@ -673,23 +704,34 @@ export default async function TridentBrainPlugin(input) {
             orchestratorName: TRIDENT_PLUGIN_IDENTITY.orchestrator
         }),
         'experimental.chat.system.transform': async (input, output) => {
-            const agentName = input.agent ?? output.agent;
-            if (!agentName) return;
-            if (agentName !== 'trident' && !agentName.startsWith('trident-') && !agentName.startsWith('trident_')) return;
             if (!state.identityLoaded) return;
+            const sid = input?.sessionID;
+            const agent = sid ? getCurrentAgent(sid) : null;
+            if (!agent || (agent !== 'trident' && !agent.startsWith('trident-') && !agent.startsWith('trident_'))) return;
+            output.system = output.system || [];
+            const alreadyInjected = output.system.some((s) => s.includes('[TRIDENT BRAIN ACTIVE]'));
+            if (alreadyInjected) return;
             try {
                 const bundle = await identityLoader.loadForRole('trident');
                 const header = formatIdentityHeader(bundle);
-                if (header) {
-                    output.system = output.system || [];
-                    const hasTrident = output.system.some((s) => s.includes('TRIDENT BRAIN') || s.includes('Trident Documents'));
-                    if (!hasTrident) {
-                        output.system.push(header);
-                    }
+                if (header) output.system.push(header);
+            }
+            catch (e) { /* identity load failure — non-critical, skip injection */ }
+        },
+        'experimental.chat.messages.transform': async (input, output) => {
+            if (!output?.messages) return;
+            let lastAgent = null, lastSid = null;
+            for (const msg of output.messages) {
+                if (msg?.info?.agent && msg?.info?.role === 'user') {
+                    lastAgent = msg.info.agent;
+                    lastSid = msg.info.sessionID;
                 }
             }
-            catch (e) {
-                // Identity injection failure - non-critical
+            if (!lastAgent || !lastSid) return;
+            if (lastAgent === 'trident' || lastAgent.startsWith('trident-') || lastAgent.startsWith('trident_')) {
+                setCurrentAgent(lastAgent, lastSid);
+            } else {
+                setCurrentAgent(undefined, lastSid);
             }
         },
         tool: {
