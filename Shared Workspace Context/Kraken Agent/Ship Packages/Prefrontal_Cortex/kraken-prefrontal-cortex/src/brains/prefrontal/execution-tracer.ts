@@ -230,4 +230,30 @@ export class ExecutionTracer {
   getTrajectoryCount(): number {
     return this.trajectoryCount;
   }
+
+  getActiveTrajectoryCount(): number {
+    return this.activeTrajectories.size;
+  }
+
+  getBufferSize(): number {
+    return this.toolCallBuffer.length;
+  }
+
+  getStoreTrajectoryCount(): number {
+    return this.cortexStore.getTrajectoryCount(this.projectId);
+  }
+
+  flushAndPersist(): void {
+    this.flushBuffer();
+    this.cortexStore.persist();
+  }
+
+  finalizeActiveTrajectories(outcome: ExecutionTrajectory['outcome'] = 'completed'): number {
+    let count = 0;
+    for (const [trajectoryId] of this.activeTrajectories) {
+      const result = this.finalizeTrajectory(trajectoryId, outcome, []);
+      if (result) count++;
+    }
+    return count;
+  }
 }

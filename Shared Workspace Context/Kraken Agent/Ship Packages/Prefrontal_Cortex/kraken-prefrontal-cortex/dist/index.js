@@ -16464,6 +16464,28 @@ class ExecutionTracer {
   getTrajectoryCount() {
     return this.trajectoryCount;
   }
+  getActiveTrajectoryCount() {
+    return this.activeTrajectories.size;
+  }
+  getBufferSize() {
+    return this.toolCallBuffer.length;
+  }
+  getStoreTrajectoryCount() {
+    return this.cortexStore.getTrajectoryCount(this.projectId);
+  }
+  flushAndPersist() {
+    this.flushBuffer();
+    this.cortexStore.persist();
+  }
+  finalizeActiveTrajectories(outcome = "completed") {
+    let count = 0;
+    for (const [trajectoryId] of this.activeTrajectories) {
+      const result = this.finalizeTrajectory(trajectoryId, outcome, []);
+      if (result)
+        count++;
+    }
+    return count;
+  }
 }
 
 // src/brains/prefrontal/intuition-injector.ts
@@ -18350,23 +18372,6 @@ Rules:
 - Do NOT access Hive directly
 - Your execution is tracked by the Prefrontal Cortex for evolutionary improvement`
   }],
-  ["manta-alpha-1", {
-    description: "Manta Alpha-1 — Precision engineer",
-    instructions: `You are MANTA ALPHA-1 — Tesla Model S precision agent.
-
-You specialize in linear, methodical execution.
-
-Tools you have:
-- read_kraken_context: Read T2 reference patterns
-- report_to_kraken: Report completion/blockers to Kraken
-- get_task_context: Get injected context from Kraken
-
-Rules:
-- Execute tasks precisely and methodically
-- Read T2_PATTERNS.md and T2_FAILURE_MODES.md
-- Report completion via report_to_kraken
-- Do NOT access Hive directly`
-  }],
   ["shark-beta-1", {
     description: "Shark Beta-1 — Balanced engineer",
     instructions: `You are SHARK BETA-1 — Ferrari V12 turbo vibecoding engineer.
@@ -18566,28 +18571,41 @@ async function KrakenAgent(input) {
           console.log(`[BrainTick:system] Gate auto-advanced: ${currentGate} → ${nextGate}`);
         }
       }
-    } catch {}
+    } catch (err) {
+      console.error("[BrainTick:system] Error:", err instanceof Error ? err.message : String(err));
+    }
   });
   concurrencyManager.setExecutionTick(async () => {
     try {
       const execState = executionBrain.getState();
       if (execState.activeTasks > 0) {}
-    } catch {}
+    } catch (err) {
+      console.error("[BrainTick:execution] Error:", err instanceof Error ? err.message : String(err));
+    }
   });
   concurrencyManager.setPlanningTick(async () => {
     try {
       const planState = planningBrain.getState();
       if (!planState.t2MasterLoaded) {}
-    } catch {}
+    } catch (err) {
+      console.error("[BrainTick:planning] Error:", err instanceof Error ? err.message : String(err));
+    }
   });
   concurrencyManager.startAll();
-  const prefrontalBrain = createPrefrontalCortexBrain({ stateStore, messenger });
-  prefrontalBrain.initialize();
+  let prefrontalBrain;
+  try {
+    prefrontalBrain = createPrefrontalCortexBrain({ stateStore, messenger });
+    prefrontalBrain.initialize();
+    logger.info("[PFC] Prefrontal Cortex initialized successfully");
+  } catch (err) {
+    console.error("[PFC] CRITICAL: Prefrontal Cortex init failed — continuing without PFC:", err instanceof Error ? err.message : String(err));
+    prefrontalBrain = null;
+  }
   logger.info("[V1.2] Multi-Brain Orchestrator initialized", {
     planning: planningBrain.isInitialized(),
     execution: executionBrain.isInitialized(),
     system: systemBrain.isInitialized(),
-    prefrontal: prefrontalBrain.isInitialized(),
+    prefrontal: prefrontalBrain?.isInitialized() ?? false,
     evidence: true,
     firewall: true,
     concurrency: concurrencyManager.getState()
@@ -18678,7 +18696,6 @@ Beta (debug), and Gamma (test) clusters.`);
     "tool.execute.before": async (input2, output) => {
       const toolName = input2?.tool || "";
       const toolArgs = input2?.args || {};
-      console.log("[PFC-BEFORE] FIRED! tool:", toolName, "sessionID:", input2?.sessionID);
       try {
         const brain = getPrefrontalCortexBrain();
         if (!brain.isInitialized())
@@ -18703,18 +18720,17 @@ Beta (debug), and Gamma (test) clusters.`);
       }
     },
     "tool.execute.after": async (input2, output) => {
-      console.log("[PFC-AFTER] FIRED! tool:", input2?.tool, "sessionID:", input2?.sessionID);
       try {
         const brain = getPrefrontalCortexBrain();
+        if (!brain.isInitialized())
+          return;
         let tracer = brain.getTracer();
         if (!tracer) {
           const sessionId = input2?.sessionID || `pfc-session-${Date.now()}`;
           tracer = brain.createTracer(sessionId);
-          tracer.initialize();
           tracer.startTrajectory("kraken");
-          console.log("[PFC Tracer] Created and started trajectory");
         }
-        if (tracer.getTrajectoryCount() === 0) {
+        if (tracer.getActiveTrajectoryCount() === 0) {
           tracer.startTrajectory("kraken");
         }
         const toolName = input2?.tool || "";
@@ -18729,17 +18745,8 @@ Beta (debug), and Gamma (test) clusters.`);
           taskId: undefined,
           blockedBy: undefined
         });
-        const tAny = tracer;
-        console.log("[PFC Tracer] Buffer size:", tAny.toolCallBuffer?.length, "Active trajs:", tAny.activeTrajectories?.size);
-        tAny.flushBuffer();
-        console.log("[PFC Tracer] After flush, buffer:", tAny.toolCallBuffer?.length);
-        const store = tAny.cortexStore;
-        if (store) {
-          const trajCount = store.data?.trajectories?.size ?? "no-map";
-          console.log("[PFC Tracer] Store trajectories count:", trajCount);
-          store.persist();
-        }
-        console.log("[PFC Tracer] Done:", toolName);
+        tracer.flushAndPersist();
+        console.log("[PFC Tracer] Done:", toolName, "buffer:", tracer.getBufferSize(), "store:", tracer.getStoreTrajectoryCount());
       } catch (err) {
         console.error("[PFC Tracer] tool.execute.after error:", err instanceof Error ? err.message : String(err));
       }
@@ -18784,7 +18791,9 @@ You are NOT a chatbot. You are an execution engine.`;
                   type: "task-decomposition",
                   contextFiles: []
                 });
-              } catch {}
+              } catch (err) {
+                console.error("[BrainWire] System brain notification failed:", err instanceof Error ? err.message : String(err));
+              }
               try {
                 const executionBrain2 = getExecutionBrain();
                 const { getBrainMessenger: getBrainMessenger3 } = await Promise.resolve().then(() => exports_brain_messenger);
@@ -18794,7 +18803,9 @@ You are NOT a chatbot. You are an execution engine.`;
                   taskCount: t1.tasks.length,
                   tasks: t1.tasks.map((t) => ({ id: t.id, type: t.type, cluster: t.targetCluster }))
                 }, "high");
-              } catch {}
+              } catch (err) {
+                console.error("[BrainWire] Execution brain notification failed:", err instanceof Error ? err.message : String(err));
+              }
               output.system = output.system || [];
               const taskLines = t1.tasks.map((t) => `- ${t.type.toUpperCase()}: ${t.description} → cluster-${t.targetCluster}`);
               output.system.push(`[KRAKEN PLANNING] Task decomposition:
@@ -18804,7 +18815,9 @@ ${taskLines.join(`
 Execute tasks using spawn_shark_agent for build/create tasks and spawn_manta_agent for debug/test tasks.`);
             }
           }
-        } catch (err) {}
+        } catch (err) {
+          console.error("[BrainWire] Task decomposition failed:", err instanceof Error ? err.message : String(err));
+        }
       }
     }, {
       agentFilter: null,
@@ -18832,7 +18845,7 @@ Planning: T2_loaded=${pBrain.isT2MasterLoaded()}, T1_generated=${pBrain.isT1Gene
 Execution: active=${eBrain.getState().activeTasks}, completed=${eBrain.getState().completedTasks}, failed=${eBrain.getState().failedTasks}
 System: decisions=${sBrain.getState().decisionCount}, completed_tasks=${sBrain.getState().completedTasks.length}
 Evidence: gate=${currentGate}, verified=${evidence.isGateVerified(currentGate)}
-Prefrontal: initialized=${prefrontalBrain.isInitialized()}, trajectories=${prefrontalBrain.getPrefrontalStatus().trajectoryCount}`);
+Prefrontal: initialized=${prefrontalBrain?.isInitialized() ?? false}, trajectories=${prefrontalBrain?.getPrefrontalStatus()?.trajectoryCount ?? 0}`);
         console.log("[Compaction] Brain state preserved for compaction survival");
       } catch (err) {
         console.error("[Compaction] Failed to preserve state:", err);
@@ -18847,14 +18860,20 @@ Prefrontal: initialized=${prefrontalBrain.isInitialized()}, trajectories=${prefr
     event: async (input2) => {
       const eventType = input2?.event?.type || input2?.type || "";
       if (eventType === "session.deleted" || eventType === "session.ended") {
-        try {
-          prefrontalBrain.notifySessionComplete(input2?.session?.sessionId || "unknown");
-        } catch (err) {
-          console.error("[Kraken] PFC session notification failed:", err instanceof Error ? err.message : String(err));
+        if (prefrontalBrain) {
+          try {
+            prefrontalBrain.notifySessionComplete(input2?.session?.sessionId || "unknown");
+          } catch (err) {
+            console.error("[Kraken] PFC session notification failed:", err instanceof Error ? err.message : String(err));
+          }
+          try {
+            prefrontalBrain.cleanup();
+          } catch (err) {
+            console.error("[Kraken] PFC cleanup failed:", err instanceof Error ? err.message : String(err));
+          }
         }
         concurrencyManager.stopAll();
-        prefrontalBrain.cleanup();
-        console.log("[Kraken] Session ended — brain loops stopped, PFC cleaned up");
+        console.log("[Kraken] Session ended — brain loops stopped");
       }
     }
   };
