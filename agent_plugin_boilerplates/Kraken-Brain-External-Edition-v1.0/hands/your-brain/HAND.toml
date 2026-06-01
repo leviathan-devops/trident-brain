@@ -1,0 +1,70 @@
+id = "{YOUR_HAND_ID}"               # [EDIT] e.g., "kraken-your-brain"
+name = "{YOUR_HAND_LABEL}"           # [EDIT] e.g., "Kraken Your Brain"
+description = "{YOUR_HAND_DESCRIPTION}"  # [EDIT] e.g., "SIA-style evolutionary optimization"
+category = "development"
+icon = "🧠"
+
+tools = [
+    "shell_exec",
+    "file_read",
+    "file_write",
+    "web_fetch",
+]
+
+skills = [
+    # [EDIT] List your brain's domain skills
+    "your-skill-one",
+    "your-skill-two",
+]
+
+mcp_servers = []
+
+# [EDIT] Add external dependencies
+# [[requires]]
+# key = "sqlite3"
+# label = "SQLite3 CLI"
+# requirement_type = "binary"
+# check_value = "sqlite3"
+# description = "Required to query brain databases."
+
+[[settings]]
+key = "interval_seconds"
+label = "Analysis Interval"
+description = "How often the external agent runs analysis (seconds)"
+setting_type = "text"
+default = "1800"
+
+[[settings]]
+key = "model"
+label = "Analysis Model"
+description = "LLM model to use for deep analysis"
+setting_type = "select"
+default = "claude-sonnet-4-20250514"
+
+[[settings.options]]
+value = "claude-sonnet-4-20250514"
+label = "Claude Sonnet 4 (Balanced)"
+provider_env = "ANTHROPIC_API_KEY"
+
+[[settings.options]]
+value = "claude-opus-4-20250514"
+label = "Claude Opus 4 (Deep Analysis)"
+provider_env = "ANTHROPIC_API_KEY"
+
+[agent]
+name = "{YOUR_HAND_LABEL}"
+description = "{YOUR_HAND_DESCRIPTION}"
+module = "builtin:chat"
+provider = "anthropic"
+model = "claude-sonnet-4-20250514"
+max_tokens = 8192
+temperature = 0.3
+system_prompt = "See SYSTEM_PROMPT.md"
+max_iterations = 20
+heartbeat_interval_secs = 120
+
+[dashboard]
+metrics = [
+    { label = "Times Active", memory_key = "times_active", format = "number" },
+    { label = "Last Run", memory_key = "last_run", format = "duration" },
+]

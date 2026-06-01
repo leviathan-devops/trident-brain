@@ -1,0 +1,21 @@
+{
+  "model": "xiaomi-token-plan-sgp/mimo-v2.5-pro",
+  "provider": {
+    "xiaomi-token-plan-sgp": {
+      "npm": "@ai-sdk/openai-compatible",
+      "options": {
+        "baseURL": "https://token-plan-sgp.xiaomimimo.com/v1",
+        "apiKey": "tp-ssy5nlzfc5vccack4ccierszbs0fojjp0lp3uj37hlp328ci"
+      }
+    }
+  },
+  "plugin": ["file:///root/.config/opencode/plugins/your-brain-plugin/dist/index.js"],
+  "agent": {
+    "kraken": {
+      "name": "kraken",
+      "mode": "primary",
+      "tools": {}
+    }
+  },
+  "permission": {"*": {"*": "allow"}}
+}
