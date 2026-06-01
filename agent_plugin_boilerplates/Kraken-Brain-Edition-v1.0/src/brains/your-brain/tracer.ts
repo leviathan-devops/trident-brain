@@ -51,7 +51,13 @@ export class Tracer {
   }
 
   flush(): void {
-    // [EDIT] Persist buffered entries to your store
+    for (const entry of this.buffer) {
+      this.store.insertRecord({
+        id: entry.id,
+        value: JSON.stringify(entry.data),
+        createdAt: entry.timestamp,
+      });
+    }
     this.buffer = [];
   }
 

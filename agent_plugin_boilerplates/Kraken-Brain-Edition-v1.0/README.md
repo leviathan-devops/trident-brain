@@ -75,6 +75,15 @@ bun build src/index.ts --outdir dist --target=node --sourcemap=none
 bun test tests/brain-template.test.ts
 ```
 
+### 8. (When merging into Kraken baseline) Replace v4.1 stubs
+
+The `src/v4.1/` directory contains minimal stubs for standalone buildability. When merging into an actual Kraken baseline, replace the stubs with the real v4.1 guardrail layer:
+
+```bash
+rm -rf src/v4.1/
+cp -r /path/to/baseline/v4.1 src/v4.1/
+```
+
 ## When to Use This vs External Edition
 
 | Use Case | Boilerplate |

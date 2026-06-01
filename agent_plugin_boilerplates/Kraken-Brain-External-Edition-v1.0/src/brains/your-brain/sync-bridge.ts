@@ -5,19 +5,15 @@
  * Queue-based messaging between an in-process brain and an out-of-process counterpart
  * (e.g., OpenFang Hand, Dragon Server Agent).
  *
- * Pattern: write to JSON queue files → external process polls → external writes responses
- *          → brain polls for responses → process responses
+ * SIDE: Sends messages via store persistence, polls for responses.
+ * Both sides are implemented — just replace the store calls and message types.
  *
  * Only include if your brain has an out-of-process external counterpart.
  * Remove for embedded-only brains (see Kraken-Brain-Edition-v1.0).
  */
 
-import type { YourBrainStore } from './your-brain-store.js';  // [EDIT] Import your store type
-import { BRAIN_LABEL } from './types.js';                     // [EDIT] Update path to your types
-
-// ──────────────────────────────────────────────
-// MESSAGE TYPES — Define your external protocol
-// ──────────────────────────────────────────────
+import type { YourBrainStore } from './your-brain-store.js';
+import { BRAIN_LABEL } from './types.js';
 
 // [EDIT] Define your bridge message types
 export type BridgeMessageType =
@@ -30,7 +26,7 @@ export type BridgeMessageType =
 export interface BridgeMessage {
   id: string;
   type: BridgeMessageType;
-  direction: 'afferent' | 'efferent';  // afferent = incoming, efferent = outgoing
+  direction: 'afferent' | 'efferent';
   payload: Record<string, unknown>;
   status: 'pending' | 'delivered' | 'failed';
   createdAt: number;
@@ -44,7 +40,7 @@ export interface BridgeStats {
   lastHeartbeatAt: number;
 }
 
-const HEARTBEAT_TIMEOUT_MS = 7200000;  // 2 hours — consider disconnected after this
+const HEARTBEAT_TIMEOUT_MS = 7200000;
 
 export class SyncBridge {
   private store: YourBrainStore;
@@ -61,10 +57,10 @@ export class SyncBridge {
     console.log(`[${BRAIN_LABEL} SyncBridge] Initialized — id=${this.brainId}`);
   }
 
-  // ──────────────────────────────────────────────
-  // SEND — Write outgoing messages to queue
-  // ──────────────────────────────────────────────
-
+  /**
+   * SEND — Persist outgoing message to store queue.
+   * The external hand polls the store for pending efferent messages.
+   */
   sendMessage(type: BridgeMessageType, payload: Record<string, unknown>): BridgeMessage {
     const message: BridgeMessage = {
       id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -74,14 +70,43 @@ export class SyncBridge {
       status: 'pending',
       createdAt: Date.now(),
     };
-    // [EDIT] Persist to your store
+    this.store.insertSyncMessage(message);
     this.stats.messagesSent++;
     return message;
   }
 
-  // ──────────────────────────────────────────────
-  // HEARTBEAT — Check external connectivity
-  // ──────────────────────────────────────────────
+  /**
+   * RECEIVE — Poll store for incoming messages from the external hand.
+   * The hand writes afferent messages to the store; this brain polls and processes them.
+   */
+  pollForMessages(): Array<{ id: string; type: string; payload: Record<string, unknown> }> {
+    return this.store.pollOutgoingMessages();
+  }
+
+  /**
+   * RECEIVE — Acknowledge delivery of a processed inbound message.
+   */
+  markDelivered(id: string): void {
+    this.store.markSyncDelivered(id);
+    this.stats.messagesReceived++;
+  }
+
+  /**
+   * RECEIVE — Check for and process inbound proposals.
+   * Override this method with your brain's specific processing logic.
+   */
+  ingestProposals(): void {
+    const messages = this.pollForMessages();
+    for (const msg of messages) {
+      try {
+        this.stats.messagesReceived++;
+        this.markDelivered(msg.id);
+      } catch (err) {
+        console.error(`[${BRAIN_LABEL} SyncBridge] Failed to process inbound message ${msg.id}:`, err);
+        this.stats.errors++;
+      }
+    }
+  }
 
   sendHeartbeat(): void {
     this.sendMessage('heartbeat', { brainId: this.brainId, timestamp: Date.now() });
@@ -89,15 +114,10 @@ export class SyncBridge {
   }
 
   checkConnectivity(): void {
-    const elapsed = Date.now() - this.stats.lastHeartbeatAt;
-    this.connected = elapsed < HEARTBEAT_TIMEOUT_MS;
+    this.connected = (Date.now() - this.stats.lastHeartbeatAt) < HEARTBEAT_TIMEOUT_MS;
   }
 
   isConnected(): boolean { return this.connected; }
-
-  // ──────────────────────────────────────────────
-  // STATS
-  // ──────────────────────────────────────────────
 
   getStats(): BridgeStats { return { ...this.stats }; }
 }

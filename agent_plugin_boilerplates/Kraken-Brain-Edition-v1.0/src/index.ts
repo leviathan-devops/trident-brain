@@ -15,7 +15,7 @@
 
 import type { Plugin, PluginInput } from '@opencode-ai/plugin';
 
-import { safeHook, createLogger, createAgentAwareness, type HookContext } from '../v4.1/index.js';
+import { safeHook, createLogger, createAgentAwareness, type HookContext } from './v4.1/index.js';
 import { createStateStore, getStateStore } from './shared/state-store.js';
 import { createBrainMessenger, getBrainMessenger } from './shared/brain-messenger.js';
 import { createYourBrainBrain, getYourBrainBrain } from './brains/your-brain/your-brain-brain.js';
@@ -77,12 +77,13 @@ export default async function YourBrainPlugin(input: PluginInput) {
 
     config: async (opencodeConfig: Record<string, any>) => {
       // [EDIT] Register your agents
+      // Use 'primary' mode for the main orchestrator agent, 'subagent' for worker agents
       opencodeConfig.agent = opencodeConfig.agent || {};
       opencodeConfig.agent['your-brain'] = {
         name: 'your-brain',
         description: 'Your brain description',
         instructions: 'Your brain system instructions.',
-        mode: 'primary',
+        mode: 'primary',         // [EDIT] 'primary' for main agent, 'subagent' for workers
         permission: { task: 'allow' },
         tools: allTools,
       };
@@ -110,6 +111,12 @@ export default async function YourBrainPlugin(input: PluginInput) {
     // [EDIT] Add tool.execute.after hook if your brain needs execution recording:
     // 'tool.execute.after': async (input: any, output: any) => { ... },
 
+    // [EDIT] Add chat.message hook if your brain needs to intercept user messages:
+    // 'chat.message': safeHook(async (input, output, ctx) => {
+    //   try { /* identity detection, task decomposition, routing */ }
+    //   catch (err) { console.error('[Brain] chat.message error:', err); }
+    // }, { agentFilter: null, pluginName: PLUGIN_IDENTITY.name, managedAgents: PLUGIN_IDENTITY.agents, agentPrefix: PLUGIN_IDENTITY.prefix, orchestratorName: PLUGIN_IDENTITY.orchestrator }),
+
     // ──────────────────────────────────────────────
     // SESSION LIFECYCLE
     // ──────────────────────────────────────────────
@@ -132,7 +139,9 @@ Initialized: ${yourBrain?.isInitialized() ?? false}`);
     event: async (input: any) => {
       const eventType = input?.event?.type || input?.type || '';
       if (eventType === 'session.deleted' || eventType === 'session.ended') {
+        const sessionId = input?.session?.sessionId || 'unknown';
         if (yourBrain) {
+          try { yourBrain.notifySessionComplete(sessionId); } catch (err) { console.error('[Brain] Session notification failed:', err); }
           try { yourBrain.cleanup(); } catch (err) { console.error('[Brain] Cleanup failed:', err); }
         }
         console.log('[Brain] Session ended');

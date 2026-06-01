@@ -7,9 +7,6 @@
  * with your actual brain values.
  */
 
-import type { StateStore } from '../../shared/state-store.js';
-import type { BrainMessenger } from '../../shared/brain-messenger.js';
-
 // ──────────────────────────────────────────────
 // BRAIN STATE — Every brain has a state interface
 // ──────────────────────────────────────────────

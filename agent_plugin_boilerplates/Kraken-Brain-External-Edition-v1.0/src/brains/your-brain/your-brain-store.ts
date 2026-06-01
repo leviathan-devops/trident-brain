@@ -109,6 +109,34 @@ export class YourBrainStore {
     return this.data.config;
   }
 
+  // [EDIT] Sync-queue methods — only needed if brain uses SyncBridge (Edition 2)
+
+  insertSyncMessage(message: { id: string; type: string; direction: string; payload: Record<string, unknown>; status: string; createdAt: number }): void {
+    this.data.records[message.id] = { id: message.id, value: JSON.stringify(message), createdAt: message.createdAt };
+    this.dirty = true;
+  }
+
+  pollOutgoingMessages(): Array<{ id: string; type: string; payload: Record<string, unknown>; createdAt: number }> {
+    return Object.values(this.data.records)
+      .filter(r => {
+        try { const m = JSON.parse(r.value); return m.direction === 'efferent' && m.status === 'pending'; }
+        catch { return false; }
+      })
+      .map(r => { const m = JSON.parse(r.value); return { id: m.id, type: m.type, payload: m.payload, createdAt: m.createdAt }; });
+  }
+
+  markSyncDelivered(id: string): void {
+    const msg = this.data.records[id];
+    if (msg) {
+      try {
+        const parsed = JSON.parse(msg.value);
+        parsed.status = 'delivered';
+        msg.value = JSON.stringify(parsed);
+        this.dirty = true;
+      } catch { /* skip corrupted */ }
+    }
+  }
+
   close(): void {
     if (this.persistTimer) { clearInterval(this.persistTimer); this.persistTimer = null; }
     if (this.dirty) this.persist();

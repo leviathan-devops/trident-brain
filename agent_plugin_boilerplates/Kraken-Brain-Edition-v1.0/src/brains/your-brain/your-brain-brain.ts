@@ -13,10 +13,12 @@
  *
  * OPTIONAL (per brain):
  *   - Persistent store (YourBrainStore) — for cross-session data
- *   - SyncBridge — for external (OpenFang) communication
  *   - Recording layer (tracer) — for tool/execution recording
  *   - Agent-facing tools
  *   - Context injection hooks
+ *
+ * This is the EMBEDDED-ONLY edition. No external bridge.
+ * For external bridge (SyncBridge + OpenFang Hand), use Kraken-Brain-External-Edition-v1.0.
  */
 
 import { BRAIN_ID, DOMAIN_ID, BRAIN_LABEL, HEARTBEAT_INTERVAL_MS, MAX_ERRORS_BEFORE_WARN,
@@ -87,7 +89,6 @@ export class YourBrainBrain {
     this.state.lastActivityAt = Date.now();
     // [EDIT] Add periodic tasks:
     // this.store.pruneExpired();
-    // this.syncBridge?.sendHeartbeat();
   }
 
   // ──────────────────────────────────────────────
@@ -99,6 +100,12 @@ export class YourBrainBrain {
 
   getState(): YourBrainState {
     return { ...this.state };
+  }
+
+  notifySessionComplete(sessionId: string): void {
+    // [EDIT] Flush your sub-components before cleanup:
+    // this.tracer?.flushAndPersist();
+    console.log(`[${BRAIN_LABEL}] Session ${sessionId} complete`);
   }
 
   // ──────────────────────────────────────────────

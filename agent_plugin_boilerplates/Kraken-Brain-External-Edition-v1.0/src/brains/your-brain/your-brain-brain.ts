@@ -90,7 +90,8 @@ export class YourBrainBrain {
     this.state.lastActivityAt = Date.now();
     // [EDIT] Add periodic tasks:
     // this.store.pruneExpired();
-    // this.syncBridge?.sendHeartbeat();
+    // If using SyncBridge (Edition 2), uncomment:
+    // if (this.syncBridge) { this.syncBridge.sendHeartbeat(); this.syncBridge.ingestProposals(); this.syncBridge.checkConnectivity(); }
   }
 
   // ──────────────────────────────────────────────
@@ -102,6 +103,16 @@ export class YourBrainBrain {
 
   getState(): YourBrainState {
     return { ...this.state };
+  }
+
+  /**
+   * notifySessionComplete — Called by the event hook when a session ends.
+   * Flushes any buffered data, reports metrics, then cleanup() is called.
+   */
+  notifySessionComplete(sessionId: string): void {
+    // [EDIT] Flush your sub-components before cleanup:
+    // this.tracer?.flushAndPersist();
+    console.log(`[${BRAIN_LABEL}] Session ${sessionId} complete`);
   }
 
   // ──────────────────────────────────────────────
