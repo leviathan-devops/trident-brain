@@ -1,0 +1,116 @@
+id = "kraken-prefrontal-cortex"
+name = "Kraken Prefrontal Cortex"
+description = "SIA-style evolutionary optimization engine for Kraken multi-brain orchestrator. Watches agent execution trajectories across all Krakens, identifies structural flaws, proposes improvements, tracks evolutionary lineage."
+category = "development"
+icon = "🧠"
+
+tools = [
+    "shell_exec",
+    "file_read",
+    "file_write",
+    "web_fetch",
+]
+
+skills = [
+    "sia-feedback-agent-pattern",
+    "kraken-system-brain-anatomy",
+    "kraken-firewall-layers-reference",
+    "kraken-hive-mind-schema",
+    "kraken-agent-instruction-format",
+    "opencode-plugin-engineering-sop",
+]
+
+mcp_servers = []
+
+[[requires]]
+key = "sqlite3"
+label = "SQLite3 CLI"
+requirement_type = "binary"
+check_value = "sqlite3"
+description = "SQLite3 is required to query Cortex databases across Kraken projects."
+
+[requires.install]
+linux_apt = "sudo apt install sqlite3"
+linux_dnf = "sudo dnf install sqlite"
+linux_pacman = "sudo pacman -S sqlite"
+macos = "brew install sqlite"
+
+[[settings]]
+key = "analysis_interval_seconds"
+label = "Analysis Interval"
+description = "How often the FeedbackBrain runs analysis (seconds)"
+setting_type = "text"
+default = "1800"
+
+[[settings]]
+key = "analysis_model"
+label = "Analysis Model"
+description = "LLM model to use for deep trajectory analysis"
+setting_type = "select"
+default = "claude-sonnet-4-20250514"
+
+[[settings.options]]
+value = "claude-sonnet-4-20250514"
+label = "Claude Sonnet 4 (Balanced)"
+provider_env = "ANTHROPIC_API_KEY"
+
+[[settings.options]]
+value = "claude-opus-4-20250514"
+label = "Claude Opus 4 (Deep Analysis)"
+provider_env = "ANTHROPIC_API_KEY"
+
+[[settings.options]]
+value = "gemini/gemini-3.1-pro-preview"
+label = "Gemini 3.1 Pro"
+provider_env = "GEMINI_API_KEY"
+
+[[settings]]
+key = "auto_apply_improvements"
+label = "Auto-Apply Improvements"
+description = "Automatically apply low-risk improvements without manual review"
+setting_type = "toggle"
+default = "true"
+
+[[settings]]
+key = "notify_channel"
+label = "Notification Channel"
+description = "Where to send improvement summaries"
+setting_type = "select"
+default = "none"
+
+[[settings.options]]
+value = "none"
+label = "None (files only)"
+
+[[settings.options]]
+value = "telegram"
+label = "Telegram"
+
+[[settings.options]]
+value = "discord"
+label = "Discord"
+
+[agent]
+name = "Prefrontal Cortex"
+description = "SIA-style evolutionary optimization engine for Kraken orchestrator. Analyzes agent execution trajectories, identifies structural flaws, proposes improvements, and tracks evolutionary lineage across all Kraken projects."
+module = "builtin:chat"
+provider = "anthropic"
+model = "claude-sonnet-4-20250514"
+max_tokens = 8192
+temperature = 0.3
+system_prompt = "See SYSTEM_PROMPT.md — 4-phase SIA Feedback Agent operational playbook"
+max_iterations = 20
+heartbeat_interval_secs = 120
+
+[dashboard]
+metrics = [
+    { label = "Projects Monitored", memory_key = "projects_monitored", format = "number" },
+    { label = "Generations Analyzed", memory_key = "generations_analyzed", format = "number" },
+    { label = "Improvements Proposed", memory_key = "improvements_proposed", format = "number" },
+    { label = "Improvements Applied", memory_key = "improvements_applied", format = "number" },
+    { label = "Total Trajectories", memory_key = "total_trajectories", format = "number" },
+    { label = "Average Accuracy Gain", memory_key = "avg_accuracy_gain", format = "number" },
+    { label = "Cross-Project Patterns", memory_key = "cross_project_patterns", format = "number" },
+    { label = "Last Analysis", memory_key = "last_analysis", format = "duration" },
+    { label = "Merkle Chain Valid", memory_key = "merkle_chain_valid", format = "number" },
+]
