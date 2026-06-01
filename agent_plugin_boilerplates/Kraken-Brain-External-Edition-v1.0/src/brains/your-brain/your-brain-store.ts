@@ -120,7 +120,7 @@ export class YourBrainStore {
     return Object.values(this.data.records)
       .filter(r => {
         try { const m = JSON.parse(r.value); return m.direction === 'efferent' && m.status === 'pending'; }
-        catch { return false; }
+        catch (err) { console.error('[YourBrainStore] Corrupt sync message:', err instanceof Error ? err.message : String(err)); return false; }
       })
       .map(r => { const m = JSON.parse(r.value); return { id: m.id, type: m.type, payload: m.payload, createdAt: m.createdAt }; });
   }
@@ -133,7 +133,7 @@ export class YourBrainStore {
         parsed.status = 'delivered';
         msg.value = JSON.stringify(parsed);
         this.dirty = true;
-      } catch { /* skip corrupted */ }
+      } catch (err) { console.error('[YourBrainStore] Corrupt sync message during mark:', err instanceof Error ? err.message : String(err)); }
     }
   }
 
