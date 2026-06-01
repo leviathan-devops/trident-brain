@@ -1,8 +1,11 @@
-# SHIP MANIFEST — Kraken Prefrontal Cortex v1.3.1
+# SHIP MANIFEST — Kraken Prefrontal Cortex v1.3.2
 
 **Ship Date:** 2026-06-01
-**Version:** v1.3.1
-**Status:** Runtime verified, audited, 98/98 tests pass
+**Version:** v1.3.2
+**Status:** Merge-ready. 0 blocking issues, 0 `as any` on private fields, 0 silent catches.
+**Bundle:** 126 modules, 0.64MB (641KB)
+**Tests:** 98/98 pass
+**Runtime:** Container TUI verified (T2 protocol). OpenFang Hand activated.
 
 ---
 
@@ -12,28 +15,31 @@
 Prefrontal_Cortex/
 ├── SHIP_MANIFEST.md                          (this file)
 ├── DEPLOY.md                                 (deployment instructions)
+├── DEBUG_LOG.md                              (full build progression history)
 ├── kraken-prefrontal-cortex/
 │   ├── dist/
 │   │   └── index.js                          (0.64MB bundle — DEPLOY THIS)
-│   ├── src/brains/prefrontal/
-│   │   ├── types.ts                          (30+ interfaces)
-│   │   ├── cortex-store.ts                   (JSON file store)
-│   │   ├── execution-tracer.ts               (tool call recording)
-│   │   ├── intuition-injector.ts             (soft signal system — PRIMARY)
-│   │   ├── anti-slop-guardrails.ts           (proposal validation)
-│   │   ├── firewall-injector.ts              (L5 hard blocks — Phase 2)
-│   │   ├── lineage-tracker.ts                (Merkle chains)
-│   │   ├── sync-bridge.ts                    (OpenFang comms)
-│   │   ├── prefrontal-cortex-brain.ts        (4th brain)
-│   │   └── index.ts                          (barrel exports)
-│   ├── src/hooks/
-│   │   ├── prefrontal-context-hook.ts        (context + intuition hooks)
-│   │   └── cluster-state-hook.ts             (cluster activity tracking)
-│   ├── src/tools/
-│   │   └── prefrontal-tools.ts               (7 agent tools)
-│   ├── src/shared/
-│   │   └── domain-ownership.ts               (brain + domain IDs)
-│   ├── src/tests/prefrontal/
+│   ├── src/
+│   │   ├── index.ts                          (plugin factory — 927 lines)
+│   │   ├── brains/prefrontal/
+│   │   │   ├── types.ts                      (30+ interfaces)
+│   │   │   ├── cortex-store.ts               (JSON file store)
+│   │   │   ├── execution-tracer.ts           (tool call recording + 5 public API methods)
+│   │   │   ├── intuition-injector.ts         (soft signal system — PRIMARY)
+│   │   │   ├── anti-slop-guardrails.ts       (proposal validation)
+│   │   │   ├── firewall-injector.ts          (L5 hard blocks — Phase 2)
+│   │   │   ├── lineage-tracker.ts            (Merkle chains)
+│   │   │   ├── sync-bridge.ts                (OpenFang comms)
+│   │   │   ├── prefrontal-cortex-brain.ts    (4th brain)
+│   │   │   └── index.ts                      (barrel exports)
+│   │   ├── hooks/
+│   │   │   ├── prefrontal-context-hook.ts    (context + intuition hooks)
+│   │   │   └── cluster-state-hook.ts         (cluster activity tracking)
+│   │   ├── tools/
+│   │   │   └── prefrontal-tools.ts           (7 agent tools)
+│   │   └── shared/
+│   │       └── domain-ownership.ts           (brain + domain IDs)
+│   ├── tests/prefrontal/
 │   │   ├── execution-tracer.test.ts          (12 tests)
 │   │   ├── sync-bridge.test.ts               (11 tests)
 │   │   ├── lineage.test.ts                   (21 tests)
@@ -60,13 +66,7 @@ mkdir -p "$PLUGIN_DIR/dist"
 cp kraken-prefrontal-cortex/dist/index.js "$PLUGIN_DIR/dist/"
 ```
 
-Add to `opencode.json`:
-```json
-{
-  "plugin": ["file:///root/.config/opencode/plugins/kraken-agent/dist/index.js"],
-  "agent": {"kraken": {"name": "kraken", "mode": "primary", "tools": {}}}
-}
-```
+Merge `src/index.ts` changes into the baseline's `src/index.ts` (PFC imports, init, hooks, tools, agent instructions).
 
 ### 2. Deploy to OpenFang (FeedbackBrain Hand)
 
@@ -77,6 +77,15 @@ sleep 6
 openfang hand install ~/.openfang/hands/kraken-prefrontal-cortex
 openfang hand activate kraken-prefrontal-cortex
 ```
+
+### 3. Deploy Source Files
+
+Copy these into the baseline for full merge:
+- `src/brains/prefrontal/` (10 files) — PFC brain modules
+- `src/hooks/prefrontal-context-hook.ts` — context + intuition hooks
+- `src/hooks/cluster-state-hook.ts` — cluster activity tracking (fixed error logging)
+- `src/tools/prefrontal-tools.ts` — 7 agent tools
+- `src/shared/domain-ownership.ts` — ID additions
 
 ---
 
@@ -95,7 +104,7 @@ bun test src/tests/prefrontal/e2e.test.ts                    # 20/20
 
 ## Runtime Verification Evidence
 
-Container TUI test (2026-06-01, T2 protocol, docker exec -it):
+Container TUI test (2026-06-01, T2 protocol, docker exec -it, baseline binary):
 
 | Hook | Evidence |
 |------|----------|
@@ -106,11 +115,17 @@ Container TUI test (2026-06-01, T2 protocol, docker exec -it):
 
 ---
 
-## Audit Results
+## Merge Audit Results
 
-Trident v3.3: No theatrical garbage. 2 minor bugs found and fixed in v1.3.1:
-1. Silent catch → now logs errors
-2. Missing optional chaining → now uses `?.`
+Final line-by-line audit (2026-06-01):
+
+| Fix | Status |
+|-----|--------|
+| PFC init try/catch — protects existing 3-brain orchestrator | DONE |
+| `as any` on private fields — replaced with public API | DONE |
+| All catch blocks log errors — 0 silent catches | DONE |
+| Duplicate manta-alpha-1 definition removed | DONE |
+| Trajectories persist via `flushAndPersist()` | DONE |
 
 ---
 
@@ -118,11 +133,10 @@ Trident v3.3: No theatrical garbage. 2 minor bugs found and fixed in v1.3.1:
 
 | Category | Files | Lines |
 |----------|-------|-------|
-| Core PFC modules | 12 | ~2,600 |
+| Core PFC modules | 10 | ~2,600 |
+| Integration (index.ts + hooks + shared) | 3 | ~1,160 |
 | OpenFang Hand | 3 | ~700 |
 | Test files | 5 | ~900 |
-| Hooks | 2 | ~234 |
-| Shared | 1 | ~100 |
-| Docs | 2 | ~400 |
 | Bundle | 1 | 0.64MB |
-| **Total** | **26** | **~4,900** |
+| Docs | 3 | ~1,000 |
+| **Total** | **25** | **~7,000** |

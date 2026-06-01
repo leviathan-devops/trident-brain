@@ -1,4 +1,4 @@
-# DEPLOY — Kraken Prefrontal Cortex v1.3.1
+# DEPLOY — Kraken Prefrontal Cortex v1.3.2
 
 ## Prerequisites
 

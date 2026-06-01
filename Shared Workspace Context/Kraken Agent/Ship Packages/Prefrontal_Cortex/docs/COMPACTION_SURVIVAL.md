@@ -1,11 +1,11 @@
-# COMPACTION SURVIVAL — Kraken Prefrontal Cortex v1.3.1
+# COMPACTION SURVIVAL — Kraken Prefrontal Cortex v1.3.2
 
 **Last Updated:** 2026-06-01
-**Build Status:** v1.3.1 — bugs fixed, runtime verified in container TUI, 98/98 tests pass, Trident audited
+**Build Status:** v1.3.2 — merge-hardened, 98/98 tests, runtime verified, audit passed
 **Bundle**: `kraken-prefrontal-cortex/dist/index.js` (0.64MB, 126 modules)
 **Tests**: 98/98 pass (34 pressure + 12 tracer + 11 sync + 21 lineage + 20 e2e)
 **Runtime**: Container 1 VERIFIED (docker exec -it, T2 protocol). Container 2 ACTIVATED (OpenFang Hand).
-**Audit**: Trident v3.3 — no theatrical garbage. 2 minor bugs fixed (silent catch, optional chaining).
+**Audit**: Final merge-readiness audit — 0 blocking issues, 0 `as any` on private fields, 0 silent catches.
 
 ## Quick Recovery
 
@@ -14,12 +14,13 @@ If context is lost during compaction, read this file first.
 ## Project Identity
 - **Project**: Kraken Prefrontal Cortex (PFC) — the 4th brain
 - **Type**: Evolutionary optimization + soft intuition injection for Kraken orchestrator
-- **Baseline**: v1.2.9.2-bricked-config-solved
+- **Baseline**: v1.2.9.2-bricked-config-solved (NUKE RELOAD)
 - **Architecture**: Soft intuition injection (primary output), trajectory recording, evolutionary lineage, anti-slop guardrails, OpenFang Hand (FeedbackBrain)
 - **NOT compaction survival** — that's vanilla Kraken. PFC is PFC-specific architecture only.
 
 ## Key Paths
 - **Project root**: `/home/leviathan/OPENCODE_WORKSPACE/Shared Workspace Context/Kraken Agent/Active Projects/Prefrontal_Cortex/`
+- **Ship package**: `/home/leviathan/OPENCODE_WORKSPACE/Shared Workspace Context/Kraken Agent/Ship Packages/Prefrontal_Cortex/`
 - **Runtime codebase**: `kraken-prefrontal-cortex/` (forked baseline + PFC modules)
 - **Architecture docs**: `00_ARCHITECTURE.md` (1,537 lines), `01_BUILD_SPEC.md` (525 lines)
 - **Build report**: `BUILD_REPORT.md`
@@ -27,6 +28,7 @@ If context is lost during compaction, read this file first.
 - **Container image**: `opencode-test:1.14.34`
 - **Binary**: `opencode-linux-x64-baseline/bin/opencode`
 - **T2 TUI Testing Bible**: `~/.local/share/opencode/hive-mind/kraken/context/T2_TUI_TESTING.md`
+- **MiMo API key**: `tp-ssy5nlzfc5vccack4ccierszbs0fojjp0lp3uj37hlp328ci`
 
 ## Architecture Decision
 - **PRIMARY OUTPUT**: Dynamic context injection via IntuitionInjector — soft `[PFC INTUITION]` signals at decision points
@@ -35,15 +37,16 @@ If context is lost during compaction, read this file first.
 - **STORAGE**: JSON file-based (NOT SQLite — `bun:sqlite` unavailable in OpenCode's Node.js process)
 - **SOFT INJECTION ONLY** — agents CAN ignore signals, not hard blocks
 - **OpenFang Hand** — FeedbackBrain installed + activated (agent ID: 36fd9e52-2457-5411-ba1d-2f970561bad6)
+- **Merge strategy**: PFC init wrapped in try/catch — failure gracefully degrades, existing 3-brain orchestrator continues
 
-## File Inventory (12 core + 3 Hand + 5 tests = 20 PFC files)
+## File Inventory (12 core + 2 hooks + 1 integration + 1 shared + 3 Hand + 5 tests = 24 PFC files)
 
 ### Core PFC Files (12)
 | File | Purpose |
 |---|---|
 | `src/brains/prefrontal/types.ts` | 30+ interfaces, 313 lines |
 | `src/brains/prefrontal/cortex-store.ts` | JSON file store, 376 lines |
-| `src/brains/prefrontal/execution-tracer.ts` | Tool call + LLM recording, 233 lines |
+| `src/brains/prefrontal/execution-tracer.ts` | Tool call + LLM recording, 253 lines (+5 public API methods) |
 | `src/brains/prefrontal/intuition-injector.ts` | Soft signal system — PRIMARY output, 258 lines |
 | `src/brains/prefrontal/anti-slop-guardrails.ts` | Proposal validation, 319 lines |
 | `src/brains/prefrontal/firewall-injector.ts` | L5 pattern injection, 154 lines |
@@ -53,6 +56,13 @@ If context is lost during compaction, read this file first.
 | `src/brains/prefrontal/index.ts` | Barrel exports |
 | `src/tools/prefrontal-tools.ts` | 7 agent tools, 155 lines |
 | `src/hooks/prefrontal-context-hook.ts` | Context + intuition hooks, 76 lines |
+
+### Integration Files (2)
+| File | Purpose |
+|---|---|
+| `src/index.ts` | Plugin factory — PFC wired into 3-brain orchestrator, 927 lines |
+| `src/hooks/cluster-state-hook.ts` | Activity tracking with error logging, 158 lines |
+| `src/shared/domain-ownership.ts` | brain + domain ID constants |
 
 ### OpenFang Hand Files (3)
 | File | Purpose |
@@ -70,26 +80,27 @@ If context is lost during compaction, read this file first.
 | `src/tests/prefrontal/lineage.test.ts` | 21 — generations, Merkle chains, context.md |
 | `src/tests/prefrontal/e2e.test.ts` | 20 — full pipeline |
 
-### Modified Files (2)
-- `src/shared/domain-ownership.ts` — added kraken-prefrontal + prefrontal-state
-- `src/index.ts` — PFC init, tool.execute.after tracer, tool.execute.before with intuition, system.transform with intuition injection, tools, agent instructions
-
 ## Changelog
 
+### v1.3.2 (2026-06-01) — Merge Hardening
+1. **PFC init try/catch** — PFC failure no longer crashes the entire plugin
+2. **Public API methods** on ExecutionTracer — `getActiveTrajectoryCount()`, `getBufferSize()`, `getStoreTrajectoryCount()`, `flushAndPersist()`, `finalizeActiveTrajectories()` — replaces `as any` private field access
+3. **No `as any` in hooks** — all tracer access through public API
+4. **Duplicate manta-alpha-1 removed** — all agents have correct PFC tracking
+5. **All empty catch blocks fixed** — 5 formerly silent catches now log errors
+6. **Null-safe PFC references** — compaction hook, event handler guard against null PFC
+
 ### v1.3.1 (2026-06-01)
-1. **Fixed silent catch** in `cluster-state-hook.ts:155` — now logs errors per spec requirement
-2. **Fixed optional chaining** in `prefrontal-context-hook.ts:27` — `bestGen.evaluation?.metrics?.accuracy` prevents NPE
-3. **Runtime verified** — Container 1 (OpenCode + PFC) confirmed all hooks fire in live TUI
-4. **OpenFang Hand activated** — Container 2 (OpenFang + PFC Hand) agent spawned, background loop running
-5. **Trident audit passed** — no theatrical garbage, all false positives triaged
-6. **Rebuilt bundle** — 126 modules, 0.64MB
+1. Silent catch → error logging (cluster-state-hook.ts)
+2. Optional chaining NPE fix (prefrontal-context-hook.ts)
+3. Trident audit passed — no theatrical garbage
 
 ### v1.3 (2026-06-01)
-1. **`tool.execute.before` RESTORED** — raw async function with intuition detection + injection (was a stub)
-2. **System transform intuition injection** — `experimental.chat.system.transform` calls both hooks
-3. **OpenFang Hand files** — HAND.toml, SYSTEM_PROMPT.md, SKILL.md (3 new files)
-4. **4 new test files** — 64 new tests (98 total)
-5. **Intuition hook reads more context** — extracts `input.text`, `input.message`, `input.messages`
+1. `tool.execute.before` RESTORED — intuition detection + injection
+2. System transform intuition injection — both hooks fire
+3. OpenFang Hand files — HAND.toml, SYSTEM_PROMPT.md, SKILL.md
+4. 4 new test files — 64 new tests (98 total)
+5. Container TUI verified — all hooks fire in live container
 
 ## Build Command
 ```bash
@@ -107,22 +118,20 @@ bun test src/tests/prefrontal/lineage.test.ts                # 21/21
 bun test src/tests/prefrontal/e2e.test.ts                    # 20/20
 ```
 
-## Runtime Verification (Container TUI)
+## Runtime Verification
 
 ### Container 1: OpenCode + PFC Kraken — VERIFIED 2026-06-01
 
-Protocol: T2 TUI Testing Bible (`docker exec -it`, baseline binary, isolated snapshot)
-
-**Hooks confirmed firing in live TUI:**
+Protocol: T2 TUI Testing Bible (docker exec -it, baseline binary, isolated snapshot)
 
 | Hook | Evidence | Status |
 |------|----------|--------|
-| `[ExecutionTracer]` | `Initialized for session=ses_17fdaeb01ffe5YO5pMMlaXRoAW, project=opencode` | WORKING |
+| `[ExecutionTracer]` | `Initialized for session=ses_17fdaeb01ffe5YO5pMMlaXRoAW` | WORKING |
 | `[PFC Tracer]` trajectory creation | `Created and started trajectory` | WORKING |
-| `[PFC Tracer]` buffer flush | `Buffer size: 1 Active trajs: 2` → `After flush, buffer: 0` | WORKING |
+| `[PFC Tracer]` buffer flush | `After flush, buffer: 0` | WORKING |
 | `[PFC Tracer]` persistence | `Store trajectories count: 2` | WORKING |
 | `[SyncBridge]` heartbeat | `Sent afferent heartbeat` every 60s | WORKING |
-| Intuition signal detection | `signals: 0` on benign command (correct) | WORKING |
+| Signal detection | `signals: 0` on benign commands (correct) | WORKING |
 | Agent identity | Responds as "Kraken" with MiMo-V2.5-Pro | WORKING |
 | Safety behavior | Destructive request correctly refused | WORKING |
 
@@ -136,11 +145,10 @@ openfang hand activate kraken-prefrontal-cortex
 ```
 
 - Agent: "Prefrontal Cortex" (ID: 36fd9e52-2457-5411-ba1d-2f970561bad6)
-- Background loop: 60s interval
-- Persisted: 12 → 13 agents across daemon restart
+- Background loop: 60s interval. Persisted: 12 → 13 agents across restart.
 - Model: claude-sonnet-4-20250514 via Anthropic provider
 
-### Container Test Protocol (T2 TUI Testing Bible v1.14.x)
+## Container Test Protocol (T2 TUI Testing Bible v1.14.x)
 
 Source: `~/.local/share/opencode/hive-mind/kraken/context/T2_TUI_TESTING.md`
 Key: use `docker exec -it` (NOT `docker attach`), use baseline binary directly.
@@ -188,9 +196,9 @@ tmux new-session -d -s "$CONTAINER" \
 sleep 8
 tmux send-keys -t "$CONTAINER" Escape
 sleep 2
-tmux send-keys -t "$CONTAINER" "who are you" Enter
-sleep 25
-tmux capture-pane -t "$CONTAINER" -p | strings | grep -vE '^\[' | grep -vE '^\s*$' | head -40
+tmux send-keys -t "$CONTAINER" "echo hello-world" Enter
+sleep 10
+tmux capture-pane -t "$CONTAINER" -p -S -200 | strings | grep -E "\[PFC|\[SyncBridge\]|\[Execution"
 ```
 
 CRITICAL: `model` at TOP LEVEL of opencode.json. `tools` as OBJECT not array. Use baseline binary directly (not npm wrapper, not musl). Use `docker exec -it` (NOT `docker attach`).
@@ -202,16 +210,19 @@ CRITICAL: `model` at TOP LEVEL of opencode.json. `tools` as OBJECT not array. Us
 4. **FLUSH_THRESHOLD=10** — immediate flush after each tool call.
 5. **Wrong API key** — correct key: `tp-ssy5nlzfc5vccack4ccierszbs0fojjp0lp3uj37hlp328ci`
 6. **`docker logs` shows wrong process** — use `tmux capture-pane` for hook output.
-7. **Silent catch in cluster-state-hook** — FIXED v1.3.1. Now logs errors.
-8. **NPE on bestGen.evaluation.metrics** — FIXED v1.3.1. Now uses optional chaining.
+7. **Silent catch** — FIXED v1.3.1
+8. **NPE on bestGen.evaluation.metrics** — FIXED v1.3.1
+9. **PFC init could crash entire plugin** — FIXED v1.3.2 (try/catch)
+10. **`as any` on private ExecutionTracer fields** — FIXED v1.3.2 (public API methods)
+11. **Duplicate manta-alpha-1 definition** — FIXED v1.3.2
+12. **Empty catch blocks (5x)** — FIXED v1.3.2
 
-## Deploy
+## Deploy to OpenCode
 ```bash
-PLUGIN_DIR="/path/to/plugins/kraken-agent"
-cp kraken-prefrontal-cortex/dist/index.js "$PLUGIN_DIR/dist/"
+cp kraken-prefrontal-cortex/dist/index.js /path/to/plugins/kraken-agent/dist/
 ```
 
-## Deploy (OpenFang Hand)
+## Deploy to OpenFang
 ```bash
 cp -r hands/kraken-prefrontal-cortex ~/.openfang/hands/
 openfang start &
