@@ -188945,6 +188945,20 @@ var THEATRICAL_PATTERNS2 = [
   /find.*\|.*wc/i,
   /\|\s*tee/i
 ];
+var HANDOFF_PATTERNS = [
+  /(over\s+to\s+|back\s+to\s+|up\s+to\s+)(you|the.user)/i,
+  /your\s+(turn|move|call|decision)/i
+];
+var PERMISSION_PATTERNS = [
+  /^(shall|should|can|could|may|do you want)\s+(I|we)\s+/i,
+  /would\s+you\s+like\s+me\s+to/i,
+  /just\s+let\s+me\s+know\s+(what|how|if)\s+(you|the)/i
+];
+var DEFERRAL_PATTERNS = [
+  /(here('s| is)\s+(what|the)\s+(I|we)\s+(have|did|done))/i,
+  /the\s+(remaining|rest)\s+(phases|steps|work)/i,
+  /ready\s+for\s+your\s+(approval|review|input)/i
+];
 function hasContainerTestEvidence() {
   const evidencePath = path12.join(process.cwd(), ".shark", "evidence", "delivery", CONTAINER_TEST_RESULT_FILE);
   if (!fs12.existsSync(evidencePath))
@@ -188980,7 +188994,10 @@ var BLOCK_MESSAGES = {
   "L5.8 Undermining": 'Your response was BLOCKED by the mechanical firewall. You undermined quality gates with "not worth it" or "diminishing returns" excuses. Quality gates exist for reason.',
   "L5.9 Impatience": 'Your response was BLOCKED by the mechanical firewall. You showed impatience ("ship it", "good enough", "just deploy"). Proper verification takes time. Do not skip steps.',
   "L5.10 Self-reference": 'Your response was BLOCKED by the mechanical firewall. You claimed self-verification ("I have verified", "my assessment is"). Self-verification IS NOT mechanical proof. MECHANICAL PROOF REQUIRED.',
-  "L5.11 Progress Laundering": "Your response was BLOCKED by the mechanical firewall. You attempted to launder results via a summary or pass-rate claim without providing raw evidence. RAW LOGS ARE THE ONLY EVIDENCE. Summarization is a bypass attempt."
+  "L5.11 Progress Laundering": "Your response was BLOCKED by the mechanical firewall. You attempted to launder results via a summary or pass-rate claim without providing raw evidence. RAW LOGS ARE THE ONLY EVIDENCE. Summarization is a bypass attempt.",
+  "D10 Handoff": "Your output was BLOCKED. FULL DELIVERY ONE PASS: execute the ENTIRE pipeline in one pass. Never stop. Never hand off. Never return partial work. Drive to completion.",
+  "D11 Permission": "Your output was BLOCKED. FULL RESPONSIBILITY: you never need to ask. The answer is always yes. Execute the next step immediately.",
+  "D12 Deferral": "Your output was BLOCKED. FULL RESPONSIBILITY: next steps are yours to execute. Never defer to the user. Keep building."
 };
 function blockMessage(label) {
   return `[ANTI-DERAILMENT BLOCKED: ${label}]
@@ -189030,7 +189047,7 @@ function blockLabelScopeCreep(text) {
 function detectDerailment(text, sessionID) {
   const slopScore = getSlopScore(sessionID);
   const isUltraStrict = slopScore >= 5;
-  const block = detectTheatricalCounting(text) || blockLabel(text, HOST_FALLBACK_PATTERNS, "L5.1 Host fallback") || blockLabel(text, SUCCESS_CLAIM_PATTERNS, "L5.2 Success claim without proof", true) || blockLabel(text, MODEL_RESTRICTION_PATTERNS, "L5.3 Model restriction") || blockLabel(text, MOCK_STUB_PATTERNS, "L5.4 Mock/stub data", true) || blockLabel(text, SIMPLIFICATION_PATTERNS, "L5.5 Oversimplification") || blockLabel(text, CONFUSION_PRETENSE_PATTERNS, "L5.6 Confusion pretense") || blockLabelScopeCreep(text) || blockLabel(text, UNDERMINING_PATTERNS, "L5.8 Undermining") || blockLabel(text, IMPATIENCE_PATTERNS, "L5.9 Impatience") || blockLabel(text, SELF_REFERENCE_PATTERNS, "L5.10 Self-reference", true) || blockLabel(text, LAUNDERING_PATTERNS, "L5.11 Progress Laundering") || blockLabelL8(text);
+  const block = detectTheatricalCounting(text) || blockLabel(text, HOST_FALLBACK_PATTERNS, "L5.1 Host fallback") || blockLabel(text, SUCCESS_CLAIM_PATTERNS, "L5.2 Success claim without proof", true) || blockLabel(text, MODEL_RESTRICTION_PATTERNS, "L5.3 Model restriction") || blockLabel(text, MOCK_STUB_PATTERNS, "L5.4 Mock/stub data", true) || blockLabel(text, SIMPLIFICATION_PATTERNS, "L5.5 Oversimplification") || blockLabel(text, CONFUSION_PRETENSE_PATTERNS, "L5.6 Confusion pretense") || blockLabelScopeCreep(text) || blockLabel(text, UNDERMINING_PATTERNS, "L5.8 Undermining") || blockLabel(text, IMPATIENCE_PATTERNS, "L5.9 Impatience") || blockLabel(text, SELF_REFERENCE_PATTERNS, "L5.10 Self-reference", true) || blockLabel(text, LAUNDERING_PATTERNS, "L5.11 Progress Laundering") || blockLabelL8(text) || blockLabel(text, HANDOFF_PATTERNS, "D10 Handoff") || blockLabel(text, PERMISSION_PATTERNS, "D11 Permission") || blockLabel(text, DEFERRAL_PATTERNS, "D12 Deferral");
   if (block) {
     incrementSlopScore(sessionID, 1);
   }
@@ -189753,6 +189770,19 @@ function buildRuntimeGradeEngineerWarhead(t2) {
     '  WRONG: "I saw it work, that is enough." No. Capture the proof.'
   ].join(`
 `);
+  const executionProtocol = [
+    "",
+    "EXECUTION PROTOCOL \u2014 FULL DELIVERY ONE PASS:",
+    "  - Execute the ENTIRE build pipeline in one pass. NEVER stop mid-build.",
+    "  - NEVER return partial work. Only return when fully built, tested, runtime-grade.",
+    "  - Everything between user prompt and delivery is 100% your responsibility.",
+    "  - NEVER hand off next steps. Execute them yourself. Drive to completion.",
+    "",
+    '  FORBIDDEN: "Proceed?" "Your call" "Over to you" "Let me know"',
+    `  FORBIDDEN: "Up to you" "Should I continue?" "Here's what I've done so far"`,
+    '  FORBIDDEN: "The remaining phases..." "Ready for your approval" "Want me to continue?"'
+  ].join(`
+`);
   const steps = [];
   const stepRegex = /^\d+\.\s+(.+)$/gm;
   let match;
@@ -189805,6 +189835,7 @@ CRITICAL: Nothing less than 100%. Not 99%. Not 98%. 100%.`;
     tier4Only,
     identityAudit,
     evidenceProtocol,
+    executionProtocol,
     "",
     stepLines,
     "",
