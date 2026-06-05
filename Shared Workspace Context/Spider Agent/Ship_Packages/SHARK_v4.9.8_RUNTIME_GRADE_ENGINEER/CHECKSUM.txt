@@ -1,4 +1,4 @@
-9a5bac9e94ce8b47a65b325241ebec20  ./dist/index.js
+6c01dd39ac1fd0ded9e4049aad05036f  ./dist/index.js
 04eddb80aa053ad464beb839325a5bfb  ./SPEC.md
 35c886be1e92d7e70c687ea4c3ee7cf4  ./package.json
 27e00a1b39d7f807220e79b7527b214f  ./compaction_survival/EVIDENCE_STATE.md
@@ -18,8 +18,8 @@ a90f4a72b6f1bcbafd5f0f1369902ab8  ./compaction_survival/V7_POKEMON_TEST_REPORT.m
 02faa84e32e82c5b0ebbb46f73eff475  ./identity/shark/QUALITY.md
 474dc6ed28ef31c9e3cd5f01ef9c4dbc  ./identity/shark/TOOLS.md
 d7191b7f4766ae9352f625aa131d10c1  ./identity/shark/FIREWALL_CONTEXT.md
-36920204189eb96e0832f86631814578  ./identity/shark/EXECUTION.md
-c271fe5b7f4f613d9280f23858bff703  ./identity/shark/SHARK.md
+7f5275765bf23861899eb9608cd92258  ./identity/shark/EXECUTION.md
+e58ab31dfa97756a299d94bf8b76e769  ./identity/shark/SHARK.md
 d0dcebb75c53367f69accfd7eab56000  ./identity/shark/IDENTITY.md
 b3744a6d53e3564675d15044afc64c10  ./identity/shark/WORKFLOW.md
 474dc6ed28ef31c9e3cd5f01ef9c4dbc  ./identity/TOOLS.md
@@ -135,7 +135,7 @@ e7315e3b4af721d2870c47df58fcf770  ./src/shared/evidence.ts
 fe19aa47aba9c23743dccf2416a38708  ./src/shared/guardian.ts
 cbedb7240c6ca768184f742a6339f16d  ./src/shared/gates.ts
 484c888a87ec6362fa8668a82f70e525  ./src/shared/state-store.ts
-0dde1fa5ca5abed781e34a950ef36d50  ./src/shared/identity-synthesizer.ts
+7c9d18c860310fb4577a28505fcfafd4  ./src/shared/identity-synthesizer.ts
 cbfa97bd0af0576e23fbe4efa1ea0c5b  ./src/shared/injectables/t1-container-testing.ts
 15e51cf21e20e1f331c333181f1978d3  ./src/shared/injectables/t1-adversarial-pressure.ts
 0344666c526f355c5e52c30b18b5b85a  ./src/shared/injectables/t1-runtime-grade-engineering.ts
@@ -189,7 +189,7 @@ be5ce58eaae930bbe45dc6c8d3dcbdc3  ./src/hooks/v4.1/chat-message-hook.ts
 b3d7f0fb1b56dc78563e09c20b5286b7  ./src/hooks/v4.1/agent-state.ts
 ab564cf9c06d61236059a15dd0780b5d  ./src/hooks/v4.1/compacting-hook.ts
 ccf055efe0b8fbf818e8bc6ec51471a6  ./src/hooks/v4.1/guardian-hook.ts
-d884056803c15330e6df13c0dcd3b6af  ./src/hooks/v4.1/messages-transform-hook.ts
+31c8c16e5240aae7df2aecb327ff9610  ./src/hooks/v4.1/messages-transform-hook.ts
 ca6091a7af5a319ccbfd2318f0eddfae  ./src/hooks/v4.1/index.ts
 a080e54285f32d32cd4b159eef10e6ac  ./src/index.ts
 8d126e1e506bf8d39204d727b3fb7cca  ./ContainerTestResult.json
