@@ -1,0 +1,55 @@
+# OpenCode Workspace .gitignore
+# Prevents opencode snapshot/indexing from burning CPU on non-source files
+node_modules/
+.pnp
+.pnp.js
+models/
+dist/
+build/
+*.bundle.js
+*.bundle.js.map
+out/
+NUKE RELOAD/
+GLOBAL NUKE RELOAD/
+*.ship.*
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+logs/
+*.log
+DEBUG LOGS/
+container-snap/
+docker-sandbox/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.venv/
+venv/
+*.tar.gz
+*.zip
+*.tgz
+*.bin
+*.pth
+*.gguf
+*.safetensors
+
+# Shared Workspace Context build artifacts
+Shared\ Workspace\ Context/
+FULL_CONTEXT_HANDOVER_SHARK/
+.PSpider/
+.Spider/
+.Spider-shark-backup/
+.manta/
+.shark/
+checkpoints/
+CHECKPOINTS/
+Checkpoints/
+
+# runtime evidence planes (per-token JSONL — never snapshot-tracked; EN-29/F-13 Class B fix)
+**/.trident/*-evidence/
+tests/omni-vision/toolchain.json.corrupt-*
