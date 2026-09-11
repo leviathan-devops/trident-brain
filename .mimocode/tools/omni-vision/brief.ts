@@ -6,8 +6,8 @@ export function buildBrief(args: ApiArgs, history: string[]): string {
   return [
     "THE SUPREMACY CONTRACT: THE PIXELS IN THE MEDIA ARE THE ONLY GROUND TRUTH. EVERYTHING ELSE IS BELIEF.",
     "",
-    `MEDIA CONTEXT (BELIEF, NOT TRUTH): ${args.media_context}`,
-    `ANALYSIS GOAL: ${args.analysis_goal}`,
+    `MEDIA CONTEXT (BELIEF, NOT TRUTH): ${args.media_context ?? "(none)"}`,
+    `ANALYSIS GOAL: ${args.analysis_goal ?? "(none)"}`,
     `REQUIRED SECTIONS:\n${sections}`,
     args.storyline ? `STORYLINE LENS (HISTORY — VERIFY, DO NOT CONFORM): ${args.storyline}` : "",
     "",
