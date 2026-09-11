@@ -9,4 +9,8 @@ test("visual-cortex agent file exists with leaf-node contract", () => {
   expect(raw).toMatch(/task:\s*deny/);
   expect(raw).toMatch(/visual_cortex/);
   expect(raw).toMatch(/PERCEIVE.*REASON.*ACT.*VERIFY.*REPORT/s);
+  expect(raw).toMatch(/webfetch:\s*true/);
+  const toolsBlock = raw.split("tools:")[1].split("---")[0];
+  const grants = toolsBlock.match(/^  \w+: true$/gm) ?? [];
+  expect(grants.length).toBe(7);
 });
