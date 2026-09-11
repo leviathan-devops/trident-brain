@@ -8,6 +8,8 @@
     "probeFile": "tests/omni-vision/fixture.png",
     "probeSizeBytes": 552,
     "under20MiB": true,
-    "readResult": "image attachment (rendered pixels visible, not a text-only stub)"
+    "readResult": "image attachment (rendered pixels visible, not a text-only stub)",
+    "verifiedAt": "2026-09-11",
+    "verifiedBy": "read-tool live probe (trident_build-5)"
   }
 }
