@@ -5,8 +5,8 @@
   "sqlite": true,
   "NATIVE_IMAGE_STUB": false,
   "nativeMediaEvidence": {
-    "probeFile": "screenshot-errors.png",
-    "probeSizeBytes": 387638,
+    "probeFile": "tests/omni-vision/fixture.png",
+    "probeSizeBytes": 552,
     "under20MiB": true,
     "readResult": "image attachment (rendered pixels visible, not a text-only stub)"
   }

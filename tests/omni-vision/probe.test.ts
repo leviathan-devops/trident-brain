@@ -6,7 +6,14 @@ test("toolchain: bun runs, ffmpeg/ffprobe/sqlite availability recorded", async (
     const p = Bun.spawnSync(["which", bin]);
     return p.exitCode === 0;
   };
+  let prior: Record<string, unknown> = {};
+  try {
+    prior = await Bun.file("tests/omni-vision/toolchain.json").json();
+  } catch {
+    prior = {};
+  }
   const report = {
+    ...prior,
     bun: true,
     ffmpeg: await which("ffmpeg"),
     ffprobe: await which("ffprobe"),
@@ -16,9 +23,9 @@ test("toolchain: bun runs, ffmpeg/ffprobe/sqlite availability recorded", async (
   expect(report.sqlite).toBe(true);
 });
 
-test("native media contract: test image under 20 MiB decodes", () => {
+test("native media contract: committed fixture under 20 MiB", () => {
   const p = "tests/omni-vision/fixture.png";
-  if (!existsSync(p)) return;
+  expect(existsSync(p)).toBe(true);
   const f = Bun.file(p);
   expect(f.size).toBeLessThan(20 * 1024 * 1024);
 });
