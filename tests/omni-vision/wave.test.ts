@@ -1,3 +1,4 @@
+// Wave-adapter unit pins (shard/shared/brief tests) + carry-over integration pins for the merge/index/comma paths this adapter relies on — sole coverage, do not split off.
 import { test, expect, afterEach } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -24,6 +25,8 @@ test("per-agent shards isolate, sharedRoot unites", () => {
   expect(a).toMatch(/wave1\/vc-watch/);
   expect(sharedRoot("proj", "wave1")).toMatch(/wave1/);
   expect(buildWaveBrief("focus text", sharedRoot("proj", "wave1"))).toMatch(/HISTORY — VERIFY, DO NOT CONFORM/);
+  expect(() => waveMemoryRoot("..", "wave1", "vc-watch")).toThrow(/\[wave\] unsafe path segment/);
+  expect(waveMemoryRoot("proj", "wave1", "a/b")).toMatch(/a_b/);
 });
 
 test("mergeWaveContext dedupes others-first own-last with slice(-5) window", () => {

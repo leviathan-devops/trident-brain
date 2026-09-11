@@ -1,5 +1,14 @@
+import { homedir } from "node:os";
+
+const home = () => process.env.HOME ?? homedir();
+
+const cleanSegment = (s: string): string => {
+  if (/(^|\/)\.\.(\/|$)/.test(s) || s.includes("\0")) throw new Error(`[wave] unsafe path segment: ${JSON.stringify(s)}`);
+  return s.replace(/\//g, "_");
+};
+
 export function waveMemoryRoot(project: string, waveId: string, agentName: string): string {
-  return `${process.env.HOME}/.vc-memory/${project}/waves/${waveId}/${agentName}`;
+  return `${home()}/.vc-memory/${cleanSegment(project)}/waves/${cleanSegment(waveId)}/${cleanSegment(agentName)}`;
 }
 
 export function sharedRoot(project: string, waveId: string): string {
