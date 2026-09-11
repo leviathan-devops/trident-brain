@@ -3,6 +3,7 @@ import { mkdirSync } from "node:fs";
 
 export type Memory = { db: Database; root: string; close: () => void };
 
+// Caller must close (try/finally); unclosed handles leave -wal/-shm sidecars beside the db.
 export function openMemory(root: string): Memory {
   mkdirSync(root, { recursive: true });
   const db = new Database(`${root}/vision.sqlite`);

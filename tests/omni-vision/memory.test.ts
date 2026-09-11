@@ -24,6 +24,7 @@ test("T2 sync is fail-open when core is down", async () => {
   const mem = openMemory(freshRoot());
   try {
     const r = await syncT2(mem, "hello");
-    expect(["SYNCED", "TDB_SYNC_PENDING"]).toContain(r);
+    // stub: no core call yet; PENDING is the whole contract — a real sync impl must update this test deliberately.
+    expect(r).toBe("TDB_SYNC_PENDING");
   } finally { mem.close(); }
 });
