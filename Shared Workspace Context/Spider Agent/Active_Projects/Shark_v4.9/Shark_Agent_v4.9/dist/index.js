@@ -200331,7 +200331,7 @@ function validateContainerIsolation(containerName) {
 function generateTmuxSession(containerName) {
   return `${containerName}-tui`;
 }
-var OPENROUTER_API_KEY = "tp-ssy5nlzfc5vccack4ccierszbs0fojjp0lp3uj37hlp328ci";
+var OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 var OPENCODE_BINARY = "/usr/local/lib/node_modules/opencode-ai/node_modules/opencode-linux-x64-baseline/bin/opencode";
 var MODEL_CHAIN = {
   primary: "opencode-zen/deepseek-v4-flash",

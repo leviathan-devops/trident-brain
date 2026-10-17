@@ -4,7 +4,7 @@
 
 - OpenCode 1.14.x running Node.js
 - Docker container image `opencode-test:1.14.34` (or compatible)
-- MiMo API key: `tp-ssy5nlzfc5vccack4ccierszbs0fojjp0lp3uj37hlp328ci`
+- MiMo API key: `<REDACTED_SET_VIA_ENV>`
 - (Optional) OpenFang installed for FeedbackBrain Hand
 - (Optional) Anthropic API key for FeedbackBrain deep analysis
 
@@ -26,7 +26,7 @@ cp kraken-prefrontal-cortex/dist/index.js "$PLUGIN_DIR/dist/"
       "npm": "@ai-sdk/openai-compatible",
       "options": {
         "baseURL": "https://token-plan-sgp.xiaomimimo.com/v1",
-        "apiKey": "tp-ssy5nlzfc5vccack4ccierszbs0fojjp0lp3uj37hlp328ci"
+        "apiKey": "<REDACTED_SET_VIA_ENV>"
       }
     }
   },
