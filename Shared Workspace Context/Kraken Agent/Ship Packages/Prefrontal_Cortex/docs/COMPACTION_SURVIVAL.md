@@ -28,7 +28,7 @@ If context is lost during compaction, read this file first.
 - **Container image**: `opencode-test:1.14.34`
 - **Binary**: `opencode-linux-x64-baseline/bin/opencode`
 - **T2 TUI Testing Bible**: `~/.local/share/opencode/hive-mind/kraken/context/T2_TUI_TESTING.md`
-- **MiMo API key**: `tp-ssy5nlzfc5vccack4ccierszbs0fojjp0lp3uj37hlp328ci`
+- **MiMo API key**: `<REDACTED_SET_VIA_ENV>`
 
 ## Architecture Decision
 - **PRIMARY OUTPUT**: Dynamic context injection via IntuitionInjector — soft `[PFC INTUITION]` signals at decision points
@@ -168,7 +168,7 @@ cat > "$SNAP/opencode.json" << 'EOF'
       "npm": "@ai-sdk/openai-compatible",
       "options": {
         "baseURL": "https://token-plan-sgp.xiaomimimo.com/v1",
-        "apiKey": "tp-ssy5nlzfc5vccack4ccierszbs0fojjp0lp3uj37hlp328ci"
+        "apiKey": "<REDACTED_SET_VIA_ENV>"
       }
     }
   },
@@ -208,7 +208,7 @@ CRITICAL: `model` at TOP LEVEL of opencode.json. `tools` as OBJECT not array. Us
 2. **`safeHook` blocks `tool.execute.*` hooks** — Use raw async functions, not safeHook-wrapped.
 3. **Tracer never initialized** — lazy-init in `tool.execute.after`.
 4. **FLUSH_THRESHOLD=10** — immediate flush after each tool call.
-5. **Wrong API key** — correct key: `tp-ssy5nlzfc5vccack4ccierszbs0fojjp0lp3uj37hlp328ci`
+5. **Wrong API key** — correct key: `<REDACTED_SET_VIA_ENV>`
 6. **`docker logs` shows wrong process** — use `tmux capture-pane` for hook output.
 7. **Silent catch** — FIXED v1.3.1
 8. **NPE on bestGen.evaluation.metrics** — FIXED v1.3.1
